@@ -1,18 +1,22 @@
 using PersonalAssistant.Core.Assistant;
+using PersonalAssistant.Core.Conversations;
 using PersonalAssistant.Core.Users;
 using PersonalAssistant.Core.WhatsApp;
 
 namespace PersonalAssistant.Core.Messaging;
 
 /// <summary>
-/// Handles one received message: asks the assistant for a reply and sends it back.
+/// Handles one received message: saves it, asks the assistant for a reply
+/// using the recent conversation, sends the reply and saves it too.
 /// </summary>
 public sealed class IncomingMessageProcessor(
     IAssistantClient assistantClient,
     IMessageSender messageSender,
     UserDirectory userDirectory,
-    ProcessedMessageTracker processedMessages)
+    IConversationStore conversationStore)
 {
+    public const int HistoryLimit = 20;
+
     public const string FallbackReply =
         "Desculpa, tive um problema para responder agora. Tenta de novo daqui a pouco. 🙏";
 
@@ -20,14 +24,25 @@ public sealed class IncomingMessageProcessor(
     {
         var user = userDirectory.FindByPhoneNumber(message.From);
 
-        if (user is null || !processedMessages.TryMarkAsProcessed(message.MessageId))
+        if (user is null)
         {
             return;
         }
 
-        var request = new AssistantRequest(
-            user.Name,
-            [new ConversationTurn(ConversationRole.User, message.Text)]);
+        var isNewMessage = await conversationStore.TryAddIncomingMessageAsync(
+            message.From,
+            message.MessageId,
+            message.Text,
+            message.Timestamp,
+            cancellationToken);
+
+        if (!isNewMessage)
+        {
+            return;
+        }
+
+        var conversation = await conversationStore.GetRecentTurnsAsync(message.From, HistoryLimit, cancellationToken);
+        var request = new AssistantRequest(user.Name, conversation);
 
         string reply;
 
@@ -43,5 +58,6 @@ public sealed class IncomingMessageProcessor(
         }
 
         await messageSender.SendTextAsync(message.From, reply, cancellationToken);
+        await conversationStore.AddAssistantReplyAsync(message.From, reply, cancellationToken);
     }
 }

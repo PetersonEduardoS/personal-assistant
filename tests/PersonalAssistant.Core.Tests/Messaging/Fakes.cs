@@ -1,4 +1,5 @@
 using PersonalAssistant.Core.Assistant;
+using PersonalAssistant.Core.Conversations;
 using PersonalAssistant.Core.Messaging;
 
 namespace PersonalAssistant.Core.Tests.Messaging;
@@ -35,5 +36,53 @@ internal sealed class FakeMessageSender : IMessageSender
         SentMessages.Add((recipient, text));
 
         return Task.CompletedTask;
+    }
+}
+
+/// <summary>
+/// Keeps the conversation in a list, with the same duplicate rule as the real store.
+/// </summary>
+internal sealed class FakeConversationStore : IConversationStore
+{
+    private readonly HashSet<string> _messageIds = [];
+
+    public List<(string PhoneNumber, ConversationTurn Turn)> Turns { get; } = [];
+
+    public Task<bool> TryAddIncomingMessageAsync(
+        string phoneNumber,
+        string whatsAppMessageId,
+        string content,
+        DateTimeOffset receivedAt,
+        CancellationToken cancellationToken = default)
+    {
+        if (!_messageIds.Add(whatsAppMessageId))
+        {
+            return Task.FromResult(false);
+        }
+
+        Turns.Add((phoneNumber, new ConversationTurn(ConversationRole.User, content)));
+
+        return Task.FromResult(true);
+    }
+
+    public Task AddAssistantReplyAsync(string phoneNumber, string content, CancellationToken cancellationToken = default)
+    {
+        Turns.Add((phoneNumber, new ConversationTurn(ConversationRole.Assistant, content)));
+
+        return Task.CompletedTask;
+    }
+
+    public Task<IReadOnlyList<ConversationTurn>> GetRecentTurnsAsync(
+        string phoneNumber,
+        int limit,
+        CancellationToken cancellationToken = default)
+    {
+        IReadOnlyList<ConversationTurn> turns = Turns
+            .Where(entry => entry.PhoneNumber == phoneNumber)
+            .Select(entry => entry.Turn)
+            .TakeLast(limit)
+            .ToList();
+
+        return Task.FromResult(turns);
     }
 }

@@ -4,6 +4,7 @@ using Microsoft.Extensions.Options;
 using PersonalAssistant.Api.Database;
 using PersonalAssistant.Api.Workers;
 using PersonalAssistant.Core.Assistant;
+using PersonalAssistant.Core.Conversations;
 using PersonalAssistant.Core.Messaging;
 using PersonalAssistant.Core.Users;
 using PersonalAssistant.Core.WhatsApp;
@@ -31,6 +32,8 @@ public static class ServiceCollectionExtensions
         services.AddDbContext<AssistantDbContext>(options =>
             options.UseSqlite(BuildConnectionString(configuration, environment)));
         services.AddHostedService<DatabaseMigrator>();
+        services.AddScoped<IConversationStore, EfConversationStore>();
+        services.AddSingleton(TimeProvider.System);
 
         // Receiving messages
         services.AddSingleton(serviceProvider =>
@@ -45,7 +48,6 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IIncomingMessageQueue, InMemoryIncomingMessageQueue>();
 
         // Processing and replying
-        services.AddSingleton(new ProcessedMessageTracker());
         services.AddTransient<IncomingMessageProcessor>();
         services.AddHttpClient<IAssistantClient, ClaudeClient>();
         services.AddHttpClient<IMessageSender, WhatsAppClient>();
