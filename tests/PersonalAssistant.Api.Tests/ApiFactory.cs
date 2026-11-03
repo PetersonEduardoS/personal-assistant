@@ -1,10 +1,14 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using PersonalAssistant.Core.Messaging;
+using PersonalAssistant.Infrastructure.Persistence;
 
 namespace PersonalAssistant.Api.Tests;
 
@@ -35,6 +39,18 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
         {
             services.RemoveAll<IIncomingMessageQueue>();
             services.AddSingleton<IIncomingMessageQueue>(Queue);
+
+            // Use an in-memory SQLite database instead of a file.
+            services.RemoveAll<DbContextOptions<AssistantDbContext>>();
+            services.RemoveAll<IDbContextOptionsConfiguration<AssistantDbContext>>();
+            services.AddSingleton(_ =>
+            {
+                var connection = new SqliteConnection("Data Source=:memory:");
+                connection.Open();
+                return connection;
+            });
+            services.AddDbContext<AssistantDbContext>((serviceProvider, options) =>
+                options.UseSqlite(serviceProvider.GetRequiredService<SqliteConnection>()));
         });
     }
 }

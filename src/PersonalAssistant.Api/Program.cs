@@ -3,7 +3,7 @@ using PersonalAssistant.Api.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddPersonalAssistant(builder.Configuration);
+builder.Services.AddPersonalAssistant(builder.Configuration, builder.Environment);
 
 var app = builder.Build();
 

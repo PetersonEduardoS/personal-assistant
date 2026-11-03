@@ -1,22 +1,36 @@
+using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using PersonalAssistant.Api.Database;
 using PersonalAssistant.Api.Workers;
 using PersonalAssistant.Core.Assistant;
 using PersonalAssistant.Core.Messaging;
 using PersonalAssistant.Core.Users;
 using PersonalAssistant.Core.WhatsApp;
 using PersonalAssistant.Infrastructure.Claude;
+using PersonalAssistant.Infrastructure.Persistence;
 using PersonalAssistant.Infrastructure.WhatsApp;
 
 namespace PersonalAssistant.Api.Extensions;
 
 public static class ServiceCollectionExtensions
 {
-    public static IServiceCollection AddPersonalAssistant(this IServiceCollection services, IConfiguration configuration)
+    private const string DefaultDatabasePath = "Data/personal-assistant.db";
+
+    public static IServiceCollection AddPersonalAssistant(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        IHostEnvironment environment)
     {
         services.Configure<WhatsAppOptions>(configuration.GetSection(WhatsAppOptions.SectionName));
         services.Configure<ClaudeOptions>(configuration.GetSection(ClaudeOptions.SectionName));
         services.AddSingleton(serviceProvider => serviceProvider.GetRequiredService<IOptions<WhatsAppOptions>>().Value);
         services.AddSingleton(serviceProvider => serviceProvider.GetRequiredService<IOptions<ClaudeOptions>>().Value);
+
+        // Storage (the migrator runs before the worker starts)
+        services.AddDbContext<AssistantDbContext>(options =>
+            options.UseSqlite(BuildConnectionString(configuration, environment)));
+        services.AddHostedService<DatabaseMigrator>();
 
         // Receiving messages
         services.AddSingleton(serviceProvider =>
@@ -38,5 +52,17 @@ public static class ServiceCollectionExtensions
         services.AddHostedService<IncomingMessageWorker>();
 
         return services;
+    }
+
+    private static string BuildConnectionString(IConfiguration configuration, IHostEnvironment environment)
+    {
+        var databasePath = configuration["Database:Path"] ?? DefaultDatabasePath;
+
+        if (!Path.IsPathRooted(databasePath))
+        {
+            databasePath = Path.Combine(environment.ContentRootPath, databasePath);
+        }
+
+        return new SqliteConnectionStringBuilder { DataSource = databasePath }.ToString();
     }
 }
