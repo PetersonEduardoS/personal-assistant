@@ -7,6 +7,7 @@ namespace PersonalAssistant.Infrastructure.Claude;
 
 /// <summary>
 /// Calls the Claude Messages API to get a reply for a conversation.
+/// When web search is enabled, Claude can search the web before answering.
 /// </summary>
 public sealed class ClaudeClient(HttpClient httpClient, ClaudeOptions options) : IAssistantClient
 {
@@ -22,7 +23,8 @@ public sealed class ClaudeClient(HttpClient httpClient, ClaudeOptions options) :
             options.Model,
             options.MaxTokens,
             BuildSystemPrompt(request),
-            request.Conversation.Select(ToRequestMessage).ToList()));
+            request.Conversation.Select(ToRequestMessage).ToList(),
+            BuildTools()));
 
         using var response = await httpClient.SendAsync(httpRequest, cancellationToken);
 
@@ -38,6 +40,7 @@ public sealed class ClaudeClient(HttpClient httpClient, ClaudeOptions options) :
 
         var body = await response.Content.ReadFromJsonAsync<MessagesResponse>(cancellationToken);
 
+        // Search blocks (server_tool_use, web_search_tool_result) are skipped; only the text goes to WhatsApp.
         var text = string.Concat(
             (body?.Content ?? [])
                 .Where(block => block.Type == TextBlockType)
@@ -56,12 +59,40 @@ public sealed class ClaudeClient(HttpClient httpClient, ClaudeOptions options) :
         var systemPrompt = new StringBuilder(options.SystemPrompt);
         systemPrompt.Append($"\n\nVocê está conversando com {request.UserName}.");
 
+        if (options.WebSearch.Enabled)
+        {
+            systemPrompt.Append(
+                "\n\nQuando a pergunta depender de informação atual, como tempo, notícias ou preços, " +
+                "pesquise na internet antes de responder. Não cole links longos na resposta.");
+        }
+
         if (!string.IsNullOrWhiteSpace(request.UserContext))
         {
             systemPrompt.Append($"\n\nContexto sobre {request.UserName}:\n{request.UserContext}");
         }
 
         return systemPrompt.ToString();
+    }
+
+    private IReadOnlyList<WebSearchTool>? BuildTools()
+    {
+        var webSearch = options.WebSearch;
+
+        if (!webSearch.Enabled)
+        {
+            return null;
+        }
+
+        var hasLocation = !string.IsNullOrWhiteSpace(webSearch.City)
+            || !string.IsNullOrWhiteSpace(webSearch.Region)
+            || !string.IsNullOrWhiteSpace(webSearch.Country)
+            || !string.IsNullOrWhiteSpace(webSearch.Timezone);
+
+        var location = hasLocation
+            ? new UserLocation(webSearch.City, webSearch.Region, webSearch.Country, webSearch.Timezone)
+            : null;
+
+        return [new WebSearchTool(webSearch.MaxUses, location)];
     }
 
     private static RequestMessage ToRequestMessage(ConversationTurn turn) =>
@@ -72,11 +103,35 @@ internal sealed record MessagesRequest(
     [property: JsonPropertyName("model")] string Model,
     [property: JsonPropertyName("max_tokens")] int MaxTokens,
     [property: JsonPropertyName("system")] string SystemPrompt,
-    [property: JsonPropertyName("messages")] IReadOnlyList<RequestMessage> Messages);
+    [property: JsonPropertyName("messages")] IReadOnlyList<RequestMessage> Messages,
+    [property: JsonPropertyName("tools"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    IReadOnlyList<WebSearchTool>? Tools);
 
 internal sealed record RequestMessage(
     [property: JsonPropertyName("role")] string Role,
     [property: JsonPropertyName("content")] string Content);
+
+internal sealed record WebSearchTool(
+    [property: JsonPropertyName("max_uses")] int MaxUses,
+    [property: JsonPropertyName("user_location"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    UserLocation? UserLocation)
+{
+    [JsonPropertyName("type")]
+    public string Type => "web_search_20250305";
+
+    [JsonPropertyName("name")]
+    public string Name => "web_search";
+}
+
+internal sealed record UserLocation(
+    [property: JsonPropertyName("city"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? City,
+    [property: JsonPropertyName("region"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Region,
+    [property: JsonPropertyName("country"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Country,
+    [property: JsonPropertyName("timezone"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Timezone)
+{
+    [JsonPropertyName("type")]
+    public string Type => "approximate";
+}
 
 internal sealed class MessagesResponse
 {

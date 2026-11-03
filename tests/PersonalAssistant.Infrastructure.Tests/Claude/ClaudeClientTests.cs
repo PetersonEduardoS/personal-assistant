@@ -158,6 +158,79 @@ public class ClaudeClientTests
         await Assert.ThrowsAsync<ClaudeApiException>(() => client.GetReplyAsync(Request("Oi")));
     }
 
+    [Fact]
+    public async Task GetReplyAsync_SendsWebSearchTool_WhenEnabled()
+    {
+        var options = new ClaudeOptions
+        {
+            ApiKey = "test-api-key",
+            Model = "test-model",
+            WebSearch = new WebSearchOptions
+            {
+                Enabled = true,
+                MaxUses = 3,
+                City = "Dublin",
+                Country = "IE",
+                Timezone = "Europe/Dublin"
+            }
+        };
+        var handler = new FakeHttpMessageHandler(HttpStatusCode.OK, SuccessResponse);
+        var client = new ClaudeClient(new HttpClient(handler), options);
+
+        await client.GetReplyAsync(Request("Quantos graus faz hoje?"));
+
+        var tool = Assert.Single(ParseBody(handler).GetProperty("tools").EnumerateArray());
+        Assert.Equal("web_search_20250305", tool.GetProperty("type").GetString());
+        Assert.Equal("web_search", tool.GetProperty("name").GetString());
+        Assert.Equal(3, tool.GetProperty("max_uses").GetInt32());
+
+        var location = tool.GetProperty("user_location");
+        Assert.Equal("approximate", location.GetProperty("type").GetString());
+        Assert.Equal("Dublin", location.GetProperty("city").GetString());
+        Assert.Equal("IE", location.GetProperty("country").GetString());
+        Assert.Equal("Europe/Dublin", location.GetProperty("timezone").GetString());
+    }
+
+    [Fact]
+    public async Task GetReplyAsync_DoesNotSendTools_WhenWebSearchIsDisabled()
+    {
+        var (client, handler) = CreateClient(HttpStatusCode.OK, SuccessResponse);
+
+        await client.GetReplyAsync(Request("Oi"));
+
+        Assert.False(ParseBody(handler).TryGetProperty("tools", out _));
+    }
+
+    [Fact]
+    public async Task GetReplyAsync_ReturnsOnlyText_WhenResponseHasSearchBlocks()
+    {
+        const string response = """
+            {
+              "content": [
+                { "type": "text", "text": "Vou pesquisar." },
+                { "type": "server_tool_use", "id": "srvtoolu_test", "name": "web_search", "input": { "query": "tempo Dublin hoje" } },
+                {
+                  "type": "web_search_tool_result",
+                  "tool_use_id": "srvtoolu_test",
+                  "content": [{ "type": "web_search_result", "url": "https://example.com", "title": "Tempo", "encrypted_content": "abc" }]
+                },
+                {
+                  "type": "text",
+                  "text": " Hoje faz 12 graus em Dublin.",
+                  "citations": [{ "type": "web_search_result_location", "url": "https://example.com", "title": "Tempo", "cited_text": "12 graus" }]
+                }
+              ],
+              "stop_reason": "end_turn",
+              "usage": { "input_tokens": 100, "output_tokens": 20, "server_tool_use": { "web_search_requests": 1 } }
+            }
+            """;
+        var (client, _) = CreateClient(HttpStatusCode.OK, response);
+
+        var reply = await client.GetReplyAsync(Request("Quantos graus faz hoje?"));
+
+        Assert.Equal("Vou pesquisar. Hoje faz 12 graus em Dublin.", reply);
+    }
+
     private static AssistantRequest Request(string text) =>
         new("Eduardo", [new ConversationTurn(ConversationRole.User, text)]);
 

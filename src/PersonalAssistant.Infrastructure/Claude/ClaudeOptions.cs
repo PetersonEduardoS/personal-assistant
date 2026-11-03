@@ -19,4 +19,6 @@ public sealed class ClaudeOptions
         "Responda sempre em português do Brasil, de forma curta, clara e amigável. " +
         "Não use tabelas nem títulos em Markdown, porque o WhatsApp não mostra. " +
         "Para destacar algo, use *asteriscos simples*.";
+
+    public WebSearchOptions WebSearch { get; set; } = new();
 }
