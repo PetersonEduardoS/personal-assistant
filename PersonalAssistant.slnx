@@ -7,5 +7,6 @@
   <Folder Name="/tests/">
     <Project Path="tests/PersonalAssistant.Api.Tests/PersonalAssistant.Api.Tests.csproj" />
     <Project Path="tests/PersonalAssistant.Core.Tests/PersonalAssistant.Core.Tests.csproj" />
+    <Project Path="tests/PersonalAssistant.Infrastructure.Tests/PersonalAssistant.Infrastructure.Tests.csproj" />
   </Folder>
 </Solution>
