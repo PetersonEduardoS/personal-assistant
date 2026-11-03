@@ -1,17 +1,9 @@
-using Microsoft.Extensions.Options;
 using PersonalAssistant.Api.Endpoints;
-using PersonalAssistant.Core.WhatsApp;
+using PersonalAssistant.Api.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.Configure<WhatsAppOptions>(
-    builder.Configuration.GetSection(WhatsAppOptions.SectionName));
-
-builder.Services.AddSingleton(serviceProvider =>
-{
-    var options = serviceProvider.GetRequiredService<IOptions<WhatsAppOptions>>().Value;
-    return new WebhookVerifier(options.VerifyToken);
-});
+builder.Services.AddWhatsAppWebhook(builder.Configuration);
 
 var app = builder.Build();
 
