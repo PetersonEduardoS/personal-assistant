@@ -4,33 +4,37 @@ using System.Text;
 namespace PersonalAssistant.Infrastructure.Tests.Claude;
 
 /// <summary>
-/// Replaces the network in tests: records the request and returns a fixed response.
+/// Replaces the network in tests: records every request and returns a fixed response.
 /// </summary>
 internal sealed class FakeHttpMessageHandler(HttpStatusCode statusCode, string responseBody) : HttpMessageHandler
 {
-    public HttpMethod? LastMethod { get; private set; }
+    public List<RecordedRequest> Requests { get; } = [];
 
-    public Uri? LastRequestUri { get; private set; }
+    public HttpMethod? LastMethod => Requests.LastOrDefault()?.Method;
 
-    public Dictionary<string, string> LastHeaders { get; } = new(StringComparer.OrdinalIgnoreCase);
+    public Uri? LastRequestUri => Requests.LastOrDefault()?.Uri;
 
-    public string? LastRequestBody { get; private set; }
+    public IReadOnlyDictionary<string, string> LastHeaders =>
+        Requests.LastOrDefault()?.Headers ?? new Dictionary<string, string>();
+
+    public string? LastRequestBody => Requests.LastOrDefault()?.Body;
 
     protected override async Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage request,
         CancellationToken cancellationToken)
     {
-        LastMethod = request.Method;
-        LastRequestUri = request.RequestUri;
+        var headers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var header in request.Headers)
         {
-            LastHeaders[header.Key] = string.Join(",", header.Value);
+            headers[header.Key] = string.Join(",", header.Value);
         }
 
-        LastRequestBody = request.Content is null
+        var body = request.Content is null
             ? null
             : await request.Content.ReadAsStringAsync(cancellationToken);
+
+        Requests.Add(new RecordedRequest(request.Method, request.RequestUri, headers, body));
 
         return new HttpResponseMessage(statusCode)
         {
@@ -38,3 +42,9 @@ internal sealed class FakeHttpMessageHandler(HttpStatusCode statusCode, string r
         };
     }
 }
+
+internal sealed record RecordedRequest(
+    HttpMethod Method,
+    Uri? Uri,
+    IReadOnlyDictionary<string, string> Headers,
+    string? Body);

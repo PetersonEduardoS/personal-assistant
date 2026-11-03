@@ -3,7 +3,7 @@ using PersonalAssistant.Api.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddWhatsAppWebhook(builder.Configuration);
+builder.Services.AddPersonalAssistant(builder.Configuration);
 
 var app = builder.Build();
 
