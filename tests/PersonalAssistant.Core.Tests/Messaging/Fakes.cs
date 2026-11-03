@@ -1,6 +1,7 @@
 using PersonalAssistant.Core.Assistant;
 using PersonalAssistant.Core.Conversations;
 using PersonalAssistant.Core.Messaging;
+using PersonalAssistant.Core.Users;
 
 namespace PersonalAssistant.Core.Tests.Messaging;
 
@@ -85,4 +86,10 @@ internal sealed class FakeConversationStore : IConversationStore
 
         return Task.FromResult(turns);
     }
+}
+
+internal sealed class FakeUserContextProvider(string? context = null) : IUserContextProvider
+{
+    public Task<string?> GetContextAsync(UserProfile user, CancellationToken cancellationToken = default) =>
+        Task.FromResult(context);
 }

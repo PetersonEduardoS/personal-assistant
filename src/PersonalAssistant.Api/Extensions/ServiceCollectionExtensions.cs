@@ -10,6 +10,7 @@ using PersonalAssistant.Core.Users;
 using PersonalAssistant.Core.WhatsApp;
 using PersonalAssistant.Infrastructure.Claude;
 using PersonalAssistant.Infrastructure.Persistence;
+using PersonalAssistant.Infrastructure.Users;
 using PersonalAssistant.Infrastructure.WhatsApp;
 
 namespace PersonalAssistant.Api.Extensions;
@@ -44,6 +45,7 @@ public static class ServiceCollectionExtensions
             serviceProvider.GetRequiredService<IConfiguration>()
                 .GetSection(UserDirectory.SectionName)
                 .Get<UserProfile[]>() ?? []));
+        services.AddSingleton<IUserContextProvider, FileUserContextProvider>();
         services.AddSingleton<WebhookPayloadParser>();
         services.AddSingleton<IIncomingMessageQueue, InMemoryIncomingMessageQueue>();
 

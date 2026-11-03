@@ -7,13 +7,14 @@ namespace PersonalAssistant.Core.Messaging;
 
 /// <summary>
 /// Handles one received message: saves it, asks the assistant for a reply
-/// using the recent conversation, sends the reply and saves it too.
+/// using the recent conversation and the user's context, sends the reply and saves it too.
 /// </summary>
 public sealed class IncomingMessageProcessor(
     IAssistantClient assistantClient,
     IMessageSender messageSender,
     UserDirectory userDirectory,
-    IConversationStore conversationStore)
+    IConversationStore conversationStore,
+    IUserContextProvider userContextProvider)
 {
     public const int HistoryLimit = 20;
 
@@ -42,7 +43,8 @@ public sealed class IncomingMessageProcessor(
         }
 
         var conversation = await conversationStore.GetRecentTurnsAsync(message.From, HistoryLimit, cancellationToken);
-        var request = new AssistantRequest(user.Name, conversation);
+        var userContext = await userContextProvider.GetContextAsync(user, cancellationToken);
+        var request = new AssistantRequest(user.Name, conversation, userContext);
 
         string reply;
 

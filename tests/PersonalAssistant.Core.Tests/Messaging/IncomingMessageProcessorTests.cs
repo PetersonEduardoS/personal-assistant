@@ -52,6 +52,18 @@ public class IncomingMessageProcessorTests
     }
 
     [Fact]
+    public async Task ProcessAsync_SendsUserContext_ToAssistant()
+    {
+        var assistant = new FakeAssistantClient("Olá!");
+        var processor = CreateProcessor(assistant, userContext: "Desenvolvedor .NET em Dublin.");
+
+        await processor.ProcessAsync(Message);
+
+        var request = Assert.Single(assistant.ReceivedRequests);
+        Assert.Equal("Desenvolvedor .NET em Dublin.", request.UserContext);
+    }
+
+    [Fact]
     public async Task ProcessAsync_SavesAssistantReply_InConversation()
     {
         var processor = CreateProcessor(new FakeAssistantClient("Olá!"));
@@ -107,6 +119,6 @@ public class IncomingMessageProcessorTests
         Assert.Equal(ConversationRole.User, stored.Turn.Role);
     }
 
-    private IncomingMessageProcessor CreateProcessor(IAssistantClient assistant) =>
-        new(assistant, _sender, Users, _store);
+    private IncomingMessageProcessor CreateProcessor(IAssistantClient assistant, string? userContext = null) =>
+        new(assistant, _sender, Users, _store, new FakeUserContextProvider(userContext));
 }
