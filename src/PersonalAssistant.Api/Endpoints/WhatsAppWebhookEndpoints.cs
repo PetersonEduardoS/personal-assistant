@@ -1,6 +1,7 @@
 using System.Text;
 using Microsoft.AspNetCore.Mvc;
 using PersonalAssistant.Core.Messaging;
+using PersonalAssistant.Core.Users;
 using PersonalAssistant.Core.WhatsApp;
 
 namespace PersonalAssistant.Api.Endpoints;
@@ -36,7 +37,7 @@ public static class WhatsAppWebhookEndpoints
         HttpRequest request,
         WebhookSignatureValidator signatureValidator,
         WebhookPayloadParser payloadParser,
-        AllowedSenderPolicy senderPolicy,
+        UserDirectory userDirectory,
         IIncomingMessageQueue messageQueue,
         CancellationToken cancellationToken)
     {
@@ -49,7 +50,7 @@ public static class WhatsAppWebhookEndpoints
 
         foreach (var message in payloadParser.Parse(Encoding.UTF8.GetString(payload)))
         {
-            if (senderPolicy.IsAllowed(message.From))
+            if (userDirectory.FindByPhoneNumber(message.From) is not null)
             {
                 await messageQueue.EnqueueAsync(message, cancellationToken);
             }

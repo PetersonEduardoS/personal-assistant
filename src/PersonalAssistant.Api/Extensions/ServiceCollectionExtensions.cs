@@ -2,6 +2,7 @@ using Microsoft.Extensions.Options;
 using PersonalAssistant.Api.Workers;
 using PersonalAssistant.Core.Assistant;
 using PersonalAssistant.Core.Messaging;
+using PersonalAssistant.Core.Users;
 using PersonalAssistant.Core.WhatsApp;
 using PersonalAssistant.Infrastructure.Claude;
 using PersonalAssistant.Infrastructure.WhatsApp;
@@ -22,8 +23,10 @@ public static class ServiceCollectionExtensions
             new WebhookVerifier(serviceProvider.GetRequiredService<WhatsAppOptions>().VerifyToken));
         services.AddSingleton(serviceProvider =>
             new WebhookSignatureValidator(serviceProvider.GetRequiredService<WhatsAppOptions>().AppSecret));
-        services.AddSingleton(serviceProvider =>
-            new AllowedSenderPolicy(serviceProvider.GetRequiredService<WhatsAppOptions>().AllowedSenders));
+        services.AddSingleton(serviceProvider => new UserDirectory(
+            serviceProvider.GetRequiredService<IConfiguration>()
+                .GetSection(UserDirectory.SectionName)
+                .Get<UserProfile[]>() ?? []));
         services.AddSingleton<WebhookPayloadParser>();
         services.AddSingleton<IIncomingMessageQueue, InMemoryIncomingMessageQueue>();
 

@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.Json;
+using PersonalAssistant.Core.Assistant;
 using PersonalAssistant.Infrastructure.Claude;
 
 namespace PersonalAssistant.Infrastructure.Tests.Claude;
@@ -31,7 +32,7 @@ public class ClaudeClientTests
     {
         var (client, _) = CreateClient(HttpStatusCode.OK, SuccessResponse);
 
-        var reply = await client.GetReplyAsync("Oi");
+        var reply = await client.GetReplyAsync(Request("Oi"));
 
         Assert.Equal("Olá, Eduardo!", reply);
     }
@@ -41,7 +42,7 @@ public class ClaudeClientTests
     {
         var (client, handler) = CreateClient(HttpStatusCode.OK, SuccessResponse);
 
-        await client.GetReplyAsync("Oi");
+        await client.GetReplyAsync(Request("Oi"));
 
         Assert.Equal(HttpMethod.Post, handler.LastMethod);
         Assert.Equal(new Uri("https://api.anthropic.com/v1/messages"), handler.LastRequestUri);
@@ -52,28 +53,68 @@ public class ClaudeClientTests
     {
         var (client, handler) = CreateClient(HttpStatusCode.OK, SuccessResponse);
 
-        await client.GetReplyAsync("Oi");
+        await client.GetReplyAsync(Request("Oi"));
 
         Assert.Equal("test-api-key", handler.LastHeaders["x-api-key"]);
         Assert.Equal("2023-06-01", handler.LastHeaders["anthropic-version"]);
     }
 
     [Fact]
-    public async Task GetReplyAsync_SendsModelSystemPromptAndUserMessage()
+    public async Task GetReplyAsync_SendsModelAndMaxTokens()
     {
         var (client, handler) = CreateClient(HttpStatusCode.OK, SuccessResponse);
 
-        await client.GetReplyAsync("Oi, tudo bem?");
+        await client.GetReplyAsync(Request("Oi"));
 
-        using var body = JsonDocument.Parse(handler.LastRequestBody!);
-        var root = body.RootElement;
+        var root = ParseBody(handler);
         Assert.Equal("test-model", root.GetProperty("model").GetString());
         Assert.Equal(300, root.GetProperty("max_tokens").GetInt32());
-        Assert.Equal("Test system prompt", root.GetProperty("system").GetString());
+    }
 
-        var message = Assert.Single(root.GetProperty("messages").EnumerateArray());
-        Assert.Equal("user", message.GetProperty("role").GetString());
-        Assert.Equal("Oi, tudo bem?", message.GetProperty("content").GetString());
+    [Fact]
+    public async Task GetReplyAsync_SendsSystemPrompt_WithUserName()
+    {
+        var (client, handler) = CreateClient(HttpStatusCode.OK, SuccessResponse);
+
+        await client.GetReplyAsync(Request("Oi"));
+
+        var system = ParseBody(handler).GetProperty("system").GetString();
+        Assert.StartsWith("Test system prompt", system);
+        Assert.Contains("Eduardo", system);
+    }
+
+    [Fact]
+    public async Task GetReplyAsync_AddsUserContextToSystemPrompt_WhenProvided()
+    {
+        var (client, handler) = CreateClient(HttpStatusCode.OK, SuccessResponse);
+        var request = Request("Oi") with { UserContext = "Trabalha com .NET em Dublin." };
+
+        await client.GetReplyAsync(request);
+
+        var system = ParseBody(handler).GetProperty("system").GetString();
+        Assert.Contains("Trabalha com .NET em Dublin.", system);
+    }
+
+    [Fact]
+    public async Task GetReplyAsync_SendsConversation_WithRoles()
+    {
+        var (client, handler) = CreateClient(HttpStatusCode.OK, SuccessResponse);
+        var request = new AssistantRequest(
+            "Eduardo",
+            [
+                new ConversationTurn(ConversationRole.User, "Oi"),
+                new ConversationTurn(ConversationRole.Assistant, "Olá!"),
+                new ConversationTurn(ConversationRole.User, "Tudo bem?")
+            ]);
+
+        await client.GetReplyAsync(request);
+
+        var messages = ParseBody(handler).GetProperty("messages").EnumerateArray().ToList();
+        Assert.Equal(
+            new (string?, string?)[] { ("user", "Oi"), ("assistant", "Olá!"), ("user", "Tudo bem?") },
+            messages.Select(message => (
+                message.GetProperty("role").GetString(),
+                message.GetProperty("content").GetString())));
     }
 
     [Fact]
@@ -90,7 +131,7 @@ public class ClaudeClientTests
             """;
         var (client, _) = CreateClient(HttpStatusCode.OK, response);
 
-        var reply = await client.GetReplyAsync("Oi");
+        var reply = await client.GetReplyAsync(Request("Oi"));
 
         Assert.Equal("Primeira parte. Segunda parte.", reply);
     }
@@ -103,7 +144,7 @@ public class ClaudeClientTests
             """;
         var (client, _) = CreateClient(HttpStatusCode.Unauthorized, errorResponse);
 
-        var exception = await Assert.ThrowsAsync<ClaudeApiException>(() => client.GetReplyAsync("Oi"));
+        var exception = await Assert.ThrowsAsync<ClaudeApiException>(() => client.GetReplyAsync(Request("Oi")));
 
         Assert.Equal(HttpStatusCode.Unauthorized, exception.StatusCode);
         Assert.DoesNotContain("test-api-key", exception.Message);
@@ -114,8 +155,14 @@ public class ClaudeClientTests
     {
         var (client, _) = CreateClient(HttpStatusCode.OK, """{ "content": [] }""");
 
-        await Assert.ThrowsAsync<ClaudeApiException>(() => client.GetReplyAsync("Oi"));
+        await Assert.ThrowsAsync<ClaudeApiException>(() => client.GetReplyAsync(Request("Oi")));
     }
+
+    private static AssistantRequest Request(string text) =>
+        new("Eduardo", [new ConversationTurn(ConversationRole.User, text)]);
+
+    private static JsonElement ParseBody(FakeHttpMessageHandler handler) =>
+        JsonDocument.Parse(handler.LastRequestBody!).RootElement;
 
     private static (ClaudeClient Client, FakeHttpMessageHandler Handler) CreateClient(
         HttpStatusCode statusCode,

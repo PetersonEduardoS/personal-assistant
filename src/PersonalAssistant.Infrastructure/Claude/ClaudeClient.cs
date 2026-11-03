@@ -1,30 +1,30 @@
 using System.Net.Http.Json;
+using System.Text;
 using System.Text.Json.Serialization;
 using PersonalAssistant.Core.Assistant;
 
 namespace PersonalAssistant.Infrastructure.Claude;
 
 /// <summary>
-/// Calls the Claude Messages API to get a reply for a user message.
+/// Calls the Claude Messages API to get a reply for a conversation.
 /// </summary>
 public sealed class ClaudeClient(HttpClient httpClient, ClaudeOptions options) : IAssistantClient
 {
     private const string MessagesPath = "v1/messages";
     private const string TextBlockType = "text";
-    private const string UserRole = "user";
 
-    public async Task<string> GetReplyAsync(string userMessage, CancellationToken cancellationToken = default)
+    public async Task<string> GetReplyAsync(AssistantRequest request, CancellationToken cancellationToken = default)
     {
-        using var request = new HttpRequestMessage(HttpMethod.Post, new Uri(new Uri(options.BaseUrl), MessagesPath));
-        request.Headers.Add("x-api-key", options.ApiKey);
-        request.Headers.Add("anthropic-version", options.ApiVersion);
-        request.Content = JsonContent.Create(new MessagesRequest(
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, new Uri(new Uri(options.BaseUrl), MessagesPath));
+        httpRequest.Headers.Add("x-api-key", options.ApiKey);
+        httpRequest.Headers.Add("anthropic-version", options.ApiVersion);
+        httpRequest.Content = JsonContent.Create(new MessagesRequest(
             options.Model,
             options.MaxTokens,
-            options.SystemPrompt,
-            [new RequestMessage(UserRole, userMessage)]));
+            BuildSystemPrompt(request),
+            request.Conversation.Select(ToRequestMessage).ToList()));
 
-        using var response = await httpClient.SendAsync(request, cancellationToken);
+        using var response = await httpClient.SendAsync(httpRequest, cancellationToken);
 
         if (!response.IsSuccessStatusCode)
         {
@@ -50,6 +50,22 @@ public sealed class ClaudeClient(HttpClient httpClient, ClaudeOptions options) :
 
         return text;
     }
+
+    private string BuildSystemPrompt(AssistantRequest request)
+    {
+        var systemPrompt = new StringBuilder(options.SystemPrompt);
+        systemPrompt.Append($"\n\nVocê está conversando com {request.UserName}.");
+
+        if (!string.IsNullOrWhiteSpace(request.UserContext))
+        {
+            systemPrompt.Append($"\n\nContexto sobre {request.UserName}:\n{request.UserContext}");
+        }
+
+        return systemPrompt.ToString();
+    }
+
+    private static RequestMessage ToRequestMessage(ConversationTurn turn) =>
+        new(turn.Role == ConversationRole.Assistant ? "assistant" : "user", turn.Content);
 }
 
 internal sealed record MessagesRequest(

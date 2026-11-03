@@ -26,7 +26,8 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
             {
                 ["WhatsApp:VerifyToken"] = VerifyToken,
                 ["WhatsApp:AppSecret"] = AppSecret,
-                ["WhatsApp:AllowedSenders:0"] = AllowedSender
+                ["Users:0:PhoneNumber"] = AllowedSender,
+                ["Users:0:Name"] = "Test User"
             });
         });
 

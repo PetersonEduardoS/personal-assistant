@@ -1,4 +1,5 @@
 using PersonalAssistant.Core.Assistant;
+using PersonalAssistant.Core.Users;
 using PersonalAssistant.Core.WhatsApp;
 
 namespace PersonalAssistant.Core.Messaging;
@@ -9,6 +10,7 @@ namespace PersonalAssistant.Core.Messaging;
 public sealed class IncomingMessageProcessor(
     IAssistantClient assistantClient,
     IMessageSender messageSender,
+    UserDirectory userDirectory,
     ProcessedMessageTracker processedMessages)
 {
     public const string FallbackReply =
@@ -16,16 +18,22 @@ public sealed class IncomingMessageProcessor(
 
     public async Task ProcessAsync(IncomingMessage message, CancellationToken cancellationToken = default)
     {
-        if (!processedMessages.TryMarkAsProcessed(message.MessageId))
+        var user = userDirectory.FindByPhoneNumber(message.From);
+
+        if (user is null || !processedMessages.TryMarkAsProcessed(message.MessageId))
         {
             return;
         }
+
+        var request = new AssistantRequest(
+            user.Name,
+            [new ConversationTurn(ConversationRole.User, message.Text)]);
 
         string reply;
 
         try
         {
-            reply = await assistantClient.GetReplyAsync(message.Text, cancellationToken);
+            reply = await assistantClient.GetReplyAsync(request, cancellationToken);
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {

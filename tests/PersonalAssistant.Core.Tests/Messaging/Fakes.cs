@@ -12,13 +12,13 @@ internal sealed class FakeAssistantClient : IAssistantClient
 
     private FakeAssistantClient() => _fails = true;
 
-    public List<string> ReceivedMessages { get; } = [];
+    public List<AssistantRequest> ReceivedRequests { get; } = [];
 
     public static FakeAssistantClient Failing() => new();
 
-    public Task<string> GetReplyAsync(string userMessage, CancellationToken cancellationToken = default)
+    public Task<string> GetReplyAsync(AssistantRequest request, CancellationToken cancellationToken = default)
     {
-        ReceivedMessages.Add(userMessage);
+        ReceivedRequests.Add(request);
 
         return _fails
             ? Task.FromException<string>(new InvalidOperationException("Assistant failed"))
