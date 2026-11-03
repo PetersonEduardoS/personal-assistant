@@ -49,3 +49,7 @@ secrets.json
 Thumbs.db
 Desktop.ini
 .DS_Store
+
+## Key files that must never be committed
+*key*.txt
+*.key

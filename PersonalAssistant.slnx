@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/PersonalAssistant.Api/PersonalAssistant.Api.csproj" />
+    <Project Path="src/PersonalAssistant.Core/PersonalAssistant.Core.csproj" />
+    <Project Path="src/PersonalAssistant.Infrastructure/PersonalAssistant.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/PersonalAssistant.Api.Tests/PersonalAssistant.Api.Tests.csproj" />
+    <Project Path="tests/PersonalAssistant.Core.Tests/PersonalAssistant.Core.Tests.csproj" />
+  </Folder>
+</Solution>
