@@ -151,6 +151,20 @@ public class ClaudeClientTests
     }
 
     [Fact]
+    public async Task GetReplyAsync_IncludesApiErrorMessage_InException()
+    {
+        const string errorResponse = """
+            { "type": "error", "error": { "type": "invalid_request_error", "message": "Example error from the API." } }
+            """;
+        var (client, _) = CreateClient(HttpStatusCode.BadRequest, errorResponse);
+
+        var exception = await Assert.ThrowsAsync<ClaudeApiException>(() => client.GetReplyAsync(Request("Oi")));
+
+        Assert.Contains("invalid_request_error", exception.Message);
+        Assert.Contains("Example error from the API.", exception.Message);
+    }
+
+    [Fact]
     public async Task GetReplyAsync_ThrowsClaudeApiException_WhenResponseHasNoText()
     {
         var (client, _) = CreateClient(HttpStatusCode.OK, """{ "content": [] }""");

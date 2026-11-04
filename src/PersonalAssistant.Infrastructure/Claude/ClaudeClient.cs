@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using System.Text;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using PersonalAssistant.Core.Assistant;
 
@@ -31,11 +32,12 @@ public sealed class ClaudeClient(HttpClient httpClient, ClaudeOptions options) :
         if (!response.IsSuccessStatusCode)
         {
             var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
+            var apiError = TryReadApiError(errorBody);
+            var message = apiError is null
+                ? $"Claude API returned status {(int)response.StatusCode}."
+                : $"Claude API returned status {(int)response.StatusCode}: {apiError}";
 
-            throw new ClaudeApiException(
-                response.StatusCode,
-                $"Claude API returned status {(int)response.StatusCode}.",
-                errorBody);
+            throw new ClaudeApiException(response.StatusCode, message, errorBody);
         }
 
         var body = await response.Content.ReadFromJsonAsync<MessagesResponse>(cancellationToken);
@@ -93,6 +95,34 @@ public sealed class ClaudeClient(HttpClient httpClient, ClaudeOptions options) :
             : null;
 
         return [new WebSearchTool(webSearch.MaxUses, location)];
+    }
+
+    /// <summary>
+    /// Reads "type: message" from the API error body, so logs show why a request failed.
+    /// The error body never contains the API key.
+    /// </summary>
+    private static string? TryReadApiError(string errorBody)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(errorBody);
+
+            if (document.RootElement.ValueKind != JsonValueKind.Object
+                || !document.RootElement.TryGetProperty("error", out var error)
+                || error.ValueKind != JsonValueKind.Object)
+            {
+                return null;
+            }
+
+            var type = error.TryGetProperty("type", out var typeElement) ? typeElement.GetString() : null;
+            var detail = error.TryGetProperty("message", out var messageElement) ? messageElement.GetString() : null;
+
+            return string.IsNullOrWhiteSpace(detail) ? type : $"{type}: {detail}";
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
     }
 
     private static RequestMessage ToRequestMessage(ConversationTurn turn) =>
