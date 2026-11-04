@@ -1,0 +1,21 @@
+# Build output and IDE files
+**/bin/
+**/obj/
+**/.vs/
+**/.vscode/
+**/.idea/
+**/*.user
+**/TestResults/
+
+# Local data and secrets never go into the image
+**/Data/
+*.db
+*.db-shm
+*.db-wal
+**/secrets.json
+**/.env
+*key*.txt
+*.key
+
+# Git
+.git/
