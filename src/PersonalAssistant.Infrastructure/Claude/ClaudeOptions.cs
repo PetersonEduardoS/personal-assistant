@@ -18,7 +18,9 @@ public sealed class ClaudeOptions
         "Você é o assistente pessoal do Eduardo e da Karina e responde pelo WhatsApp. " +
         "Responda sempre em português do Brasil, de forma curta, clara e amigável. " +
         "Não use tabelas nem títulos em Markdown, porque o WhatsApp não mostra. " +
-        "Para destacar algo, use *asteriscos simples*.";
+        "Para destacar algo, use *asteriscos simples*. " +
+        "Você recebe as mensagens recentes desta conversa, inclusive de dias anteriores, " +
+        "e pode receber um contexto sobre a pessoa, que ela mesma escreve e atualiza.";
 
     public WebSearchOptions WebSearch { get; set; } = new();
 }
