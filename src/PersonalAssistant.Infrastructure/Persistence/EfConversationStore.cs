@@ -1,4 +1,3 @@
-using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using PersonalAssistant.Core.Assistant;
 using PersonalAssistant.Core.Conversations;
@@ -7,8 +6,6 @@ namespace PersonalAssistant.Infrastructure.Persistence;
 
 public sealed class EfConversationStore(AssistantDbContext context, TimeProvider timeProvider) : IConversationStore
 {
-    private const int SqliteConstraintErrorCode = 19;
-
     public async Task<bool> TryAddIncomingMessageAsync(
         string phoneNumber,
         string whatsAppMessageId,
@@ -39,8 +36,7 @@ public sealed class EfConversationStore(AssistantDbContext context, TimeProvider
 
             return true;
         }
-        catch (DbUpdateException exception)
-            when (exception.InnerException is SqliteException { SqliteErrorCode: SqliteConstraintErrorCode })
+        catch (DbUpdateException exception) when (SqliteErrors.IsConstraintViolation(exception))
         {
             // Another delivery of the same webhook was saved at the same moment.
             context.ChangeTracker.Clear();
@@ -84,5 +80,19 @@ public sealed class EfConversationStore(AssistantDbContext context, TimeProvider
         return latestTurns
             .SkipWhile(turn => turn.Role == ConversationRole.Assistant)
             .ToList();
+    }
+
+    public async Task<DateTimeOffset?> GetLastUserMessageAtAsync(
+        string phoneNumber,
+        CancellationToken cancellationToken = default)
+    {
+        var lastSentAtUtc = await context.ConversationMessages
+            .AsNoTracking()
+            .Where(message => message.PhoneNumber == phoneNumber && message.Role == ConversationRole.User)
+            .OrderByDescending(message => message.CreatedAtUtc)
+            .Select(message => (DateTime?)message.CreatedAtUtc)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        return lastSentAtUtc is null ? null : UtcDateTimes.ToOffset(lastSentAtUtc.Value);
     }
 }

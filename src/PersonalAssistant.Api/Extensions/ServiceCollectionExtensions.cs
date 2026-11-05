@@ -6,6 +6,7 @@ using PersonalAssistant.Api.Workers;
 using PersonalAssistant.Core.Assistant;
 using PersonalAssistant.Core.Conversations;
 using PersonalAssistant.Core.Messaging;
+using PersonalAssistant.Core.MorningBriefs;
 using PersonalAssistant.Core.Users;
 using PersonalAssistant.Core.WhatsApp;
 using PersonalAssistant.Infrastructure.Claude;
@@ -34,6 +35,7 @@ public static class ServiceCollectionExtensions
             options.UseSqlite(BuildConnectionString(configuration, environment)));
         services.AddHostedService<DatabaseMigrator>();
         services.AddScoped<IConversationStore, EfConversationStore>();
+        services.AddScoped<IMorningBriefStore, EfMorningBriefStore>();
         services.AddSingleton(TimeProvider.System);
 
         // Receiving messages

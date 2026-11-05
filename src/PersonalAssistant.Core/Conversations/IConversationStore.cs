@@ -27,4 +27,10 @@ public interface IConversationStore
         string phoneNumber,
         int limit,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns when the user last sent a message, or null when they never did.
+    /// Used to know whether the 24-hour window is open.
+    /// </summary>
+    Task<DateTimeOffset?> GetLastUserMessageAtAsync(string phoneNumber, CancellationToken cancellationToken = default);
 }

@@ -46,6 +46,7 @@ internal sealed class FakeMessageSender : IMessageSender
 internal sealed class FakeConversationStore : IConversationStore
 {
     private readonly HashSet<string> _messageIds = [];
+    private readonly Dictionary<string, DateTimeOffset> _lastUserMessageAt = [];
 
     public List<(string PhoneNumber, ConversationTurn Turn)> Turns { get; } = [];
 
@@ -63,7 +64,21 @@ internal sealed class FakeConversationStore : IConversationStore
 
         Turns.Add((phoneNumber, new ConversationTurn(ConversationRole.User, content)));
 
+        if (!_lastUserMessageAt.TryGetValue(phoneNumber, out var lastSentAt) || receivedAt > lastSentAt)
+        {
+            _lastUserMessageAt[phoneNumber] = receivedAt;
+        }
+
         return Task.FromResult(true);
+    }
+
+    public Task<DateTimeOffset?> GetLastUserMessageAtAsync(
+        string phoneNumber,
+        CancellationToken cancellationToken = default)
+    {
+        DateTimeOffset? lastSentAt = _lastUserMessageAt.TryGetValue(phoneNumber, out var sentAt) ? sentAt : null;
+
+        return Task.FromResult(lastSentAt);
     }
 
     public Task AddAssistantReplyAsync(string phoneNumber, string content, CancellationToken cancellationToken = default)

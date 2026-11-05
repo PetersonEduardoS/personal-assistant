@@ -53,6 +53,38 @@ namespace PersonalAssistant.Infrastructure.Persistence.Migrations
 
                     b.ToTable("ConversationMessages", (string)null);
                 });
+
+            modelBuilder.Entity("PersonalAssistant.Infrastructure.Persistence.MorningBriefEntry", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("DeliveredAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PhoneNumber")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PhoneNumber", "Date")
+                        .IsUnique();
+
+                    b.ToTable("MorningBriefs", (string)null);
+                });
 #pragma warning restore 612, 618
         }
     }

@@ -54,6 +54,27 @@ public sealed class AssistantDbContextTests : IDisposable
         Assert.Equal(2, await context.ConversationMessages.CountAsync());
     }
 
+    [Fact]
+    public async Task SaveChanges_Throws_WhenUserHasTwoMorningBriefsOnSameDay()
+    {
+        await using var context = _database.CreateContext();
+        context.MorningBriefs.Add(NewBrief("Primeiro resumo"));
+        await context.SaveChangesAsync();
+
+        context.MorningBriefs.Add(NewBrief("Segundo resumo"));
+
+        await Assert.ThrowsAsync<DbUpdateException>(() => context.SaveChangesAsync());
+    }
+
+    private static MorningBriefEntry NewBrief(string content) =>
+        new()
+        {
+            PhoneNumber = "353800000001",
+            Date = new DateOnly(2026, 11, 5),
+            Content = content,
+            CreatedAtUtc = DateTime.UtcNow
+        };
+
     private static ConversationMessage NewMessage(string? whatsAppMessageId, ConversationRole role, string content) =>
         new()
         {

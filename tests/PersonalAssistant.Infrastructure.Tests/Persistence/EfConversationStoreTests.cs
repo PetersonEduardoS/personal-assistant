@@ -107,4 +107,32 @@ public sealed class EfConversationStoreTests : IDisposable
         var turn = Assert.Single(turns);
         Assert.Equal("Oi, sou a Karina", turn.Content);
     }
+
+    [Fact]
+    public async Task GetLastUserMessageAtAsync_ReturnsNull_WhenUserNeverSentMessage()
+    {
+        await using var context = _database.CreateContext();
+        var store = new EfConversationStore(context, TimeProvider.System);
+
+        var lastSentAt = await store.GetLastUserMessageAtAsync(Eduardo);
+
+        Assert.Null(lastSentAt);
+    }
+
+    [Fact]
+    public async Task GetLastUserMessageAtAsync_ReturnsTimeOfLatestUserMessage_IgnoringRepliesAndOtherUsers()
+    {
+        var firstSentAt = new DateTimeOffset(2026, 11, 4, 9, 0, 0, TimeSpan.Zero);
+        var lastSentAt = new DateTimeOffset(2026, 11, 4, 21, 30, 0, TimeSpan.Zero);
+        await using var context = _database.CreateContext();
+        var store = new EfConversationStore(context, new FixedTimeProvider(lastSentAt.AddMinutes(5)));
+        await store.TryAddIncomingMessageAsync(Eduardo, "wamid.TEST1", "Bom dia", firstSentAt);
+        await store.TryAddIncomingMessageAsync(Eduardo, "wamid.TEST2", "Boa noite", lastSentAt);
+        await store.AddAssistantReplyAsync(Eduardo, "Boa noite!");
+        await store.TryAddIncomingMessageAsync(Karina, "wamid.TEST3", "Oi", lastSentAt.AddHours(1));
+
+        var result = await store.GetLastUserMessageAtAsync(Eduardo);
+
+        Assert.Equal(lastSentAt, result);
+    }
 }
