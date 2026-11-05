@@ -93,3 +93,11 @@ internal sealed class FakeUserContextProvider(string? context = null) : IUserCon
     public Task<string?> GetContextAsync(UserProfile user, CancellationToken cancellationToken = default) =>
         Task.FromResult(context);
 }
+
+/// <summary>
+/// A clock that always returns the same time, so tests do not depend on the real time.
+/// </summary>
+internal sealed class FixedTimeProvider(DateTimeOffset now) : TimeProvider
+{
+    public override DateTimeOffset GetUtcNow() => now;
+}

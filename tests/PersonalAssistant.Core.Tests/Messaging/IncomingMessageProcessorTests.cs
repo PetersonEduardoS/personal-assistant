@@ -9,8 +9,10 @@ public class IncomingMessageProcessorTests
 {
     private const string Eduardo = "353800000001";
 
+    private static readonly DateTimeOffset Now = new(2026, 11, 5, 12, 0, 0, TimeSpan.Zero);
+
     private static readonly IncomingMessage Message =
-        new("wamid.TEST1", Eduardo, "Oi", DateTimeOffset.UnixEpoch);
+        new("wamid.TEST1", Eduardo, "Oi", Now.AddSeconds(-5));
 
     private static readonly UserDirectory Users =
         new([new UserProfile { PhoneNumber = Eduardo, Name = "Eduardo" }]);
@@ -23,8 +25,9 @@ public class IncomingMessageProcessorTests
     {
         var processor = CreateProcessor(new FakeAssistantClient("Olá!"));
 
-        await processor.ProcessAsync(Message);
+        var result = await processor.ProcessAsync(Message);
 
+        Assert.Equal(MessageProcessingResult.Replied, result);
         var sent = Assert.Single(_sender.SentMessages);
         Assert.Equal((Eduardo, "Olá!"), sent);
     }
@@ -86,8 +89,9 @@ public class IncomingMessageProcessorTests
         var processor = CreateProcessor(assistant);
 
         await processor.ProcessAsync(Message);
-        await processor.ProcessAsync(Message);
+        var result = await processor.ProcessAsync(Message);
 
+        Assert.Equal(MessageProcessingResult.Duplicate, result);
         Assert.Single(assistant.ReceivedRequests);
         Assert.Single(_sender.SentMessages);
     }
@@ -98,8 +102,9 @@ public class IncomingMessageProcessorTests
         var assistant = new FakeAssistantClient("Olá!");
         var processor = CreateProcessor(assistant);
 
-        await processor.ProcessAsync(Message with { From = "353899999999" });
+        var result = await processor.ProcessAsync(Message with { From = "353899999999" });
 
+        Assert.Equal(MessageProcessingResult.UnknownSender, result);
         Assert.Empty(assistant.ReceivedRequests);
         Assert.Empty(_sender.SentMessages);
         Assert.Empty(_store.Turns);
@@ -119,6 +124,39 @@ public class IncomingMessageProcessorTests
         Assert.Equal(ConversationRole.User, stored.Turn.Role);
     }
 
+    [Fact]
+    public async Task ProcessAsync_IgnoresMessage_WhenOlderThanMaxAge()
+    {
+        var assistant = new FakeAssistantClient("Olá!");
+        var processor = CreateProcessor(assistant);
+        var oldMessage = Message with
+        {
+            Timestamp = Now - IncomingMessageProcessor.MaxMessageAge - TimeSpan.FromMinutes(1)
+        };
+
+        var result = await processor.ProcessAsync(oldMessage);
+
+        Assert.Equal(MessageProcessingResult.TooOld, result);
+        Assert.Empty(assistant.ReceivedRequests);
+        Assert.Empty(_sender.SentMessages);
+        Assert.Empty(_store.Turns);
+    }
+
+    [Fact]
+    public async Task ProcessAsync_RepliesToMessage_WhenSentJustUnderMaxAge()
+    {
+        var processor = CreateProcessor(new FakeAssistantClient("Olá!"));
+        var recentMessage = Message with
+        {
+            Timestamp = Now - IncomingMessageProcessor.MaxMessageAge + TimeSpan.FromMinutes(1)
+        };
+
+        var result = await processor.ProcessAsync(recentMessage);
+
+        Assert.Equal(MessageProcessingResult.Replied, result);
+        Assert.Single(_sender.SentMessages);
+    }
+
     private IncomingMessageProcessor CreateProcessor(IAssistantClient assistant, string? userContext = null) =>
-        new(assistant, _sender, Users, _store, new FakeUserContextProvider(userContext));
+        new(assistant, _sender, Users, _store, new FakeUserContextProvider(userContext), new FixedTimeProvider(Now));
 }

@@ -1,10 +1,11 @@
 using PersonalAssistant.Core.Messaging;
+using PersonalAssistant.Core.WhatsApp;
 
 namespace PersonalAssistant.Api.Workers;
 
 /// <summary>
 /// Reads messages from the queue in the background and hands each one to the processor.
-/// A failure in one message is logged and does not stop the worker.
+/// The outcome of every message is logged, and a failure in one message does not stop the worker.
 /// </summary>
 public sealed class IncomingMessageWorker(
     IIncomingMessageQueue messageQueue,
@@ -22,9 +23,9 @@ public sealed class IncomingMessageWorker(
                     using var scope = scopeFactory.CreateScope();
                     var processor = scope.ServiceProvider.GetRequiredService<IncomingMessageProcessor>();
 
-                    await processor.ProcessAsync(message, stoppingToken);
+                    var result = await processor.ProcessAsync(message, stoppingToken);
 
-                    logger.LogInformation("Replied to message {MessageId}", message.MessageId);
+                    LogResult(message, result);
                 }
                 catch (Exception exception) when (exception is not OperationCanceledException)
                 {
@@ -35,6 +36,34 @@ public sealed class IncomingMessageWorker(
         catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
         {
             // The application is shutting down.
+        }
+    }
+
+    private void LogResult(IncomingMessage message, MessageProcessingResult result)
+    {
+        switch (result)
+        {
+            case MessageProcessingResult.Replied:
+                logger.LogInformation("Replied to message {MessageId}", message.MessageId);
+                break;
+
+            case MessageProcessingResult.Duplicate:
+                logger.LogInformation("Ignored duplicate message {MessageId}", message.MessageId);
+                break;
+
+            case MessageProcessingResult.UnknownSender:
+                logger.LogWarning(
+                    "Ignored message {MessageId} from a number that is not in the user list",
+                    message.MessageId);
+                break;
+
+            case MessageProcessingResult.TooOld:
+                logger.LogWarning(
+                    "Ignored message {MessageId} sent at {SentAt:u}, older than {MaxMessageAge}",
+                    message.MessageId,
+                    message.Timestamp,
+                    IncomingMessageProcessor.MaxMessageAge);
+                break;
         }
     }
 }
