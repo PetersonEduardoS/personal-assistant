@@ -66,7 +66,8 @@ public static class ServiceCollectionExtensions
         services.AddSingleton(TimeZoneInfo.FindSystemTimeZoneById(UsersTimeZoneId));
         services.AddMemoryCache();
         services.AddHttpClient<CalendarFeedWorkScheduleProvider>(client =>
-            client.Timeout = TimeSpan.FromSeconds(15));
+            client.Timeout = TimeSpan.FromSeconds(15))
+            .RemoveAllLoggers(); // The calendar URL is a bearer secret, including its query string.
         services.AddTransient<IWorkScheduleProvider, CachedWorkScheduleProvider>();
         services.AddHttpClient<IAssistantClient, ClaudeClient>();
         services.AddHttpClient<IMessageSender, WhatsAppClient>();

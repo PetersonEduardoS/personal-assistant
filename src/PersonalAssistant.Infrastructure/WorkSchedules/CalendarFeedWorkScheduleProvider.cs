@@ -47,7 +47,8 @@ public sealed class CalendarFeedWorkScheduleProvider(
         catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
         {
             // The link is a secret, so it is never written to the logs.
-            logger.LogWarning(exception, "Could not read the work schedule of {UserName}", user.Name);
+            logger.LogWarning("Could not read the work schedule of {UserName}: {FailureType}, HTTP {StatusCode}",
+                user.Name, exception.GetType().Name, (exception as HttpRequestException)?.StatusCode);
 
             return WorkSchedule.Unavailable;
         }
