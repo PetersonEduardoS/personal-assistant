@@ -47,6 +47,7 @@ internal sealed class FakeAssistantClient : IAssistantClient
 internal sealed class FakeMessageSender : IMessageSender
 {
     public Task SendTemplateAsync(string recipient, string templateName, string languageCode,
+        IReadOnlyList<string>? bodyParameters = null,
         CancellationToken cancellationToken = default) => throw new NotSupportedException();
 
     public List<(string Recipient, string Text)> SentMessages { get; } = [];

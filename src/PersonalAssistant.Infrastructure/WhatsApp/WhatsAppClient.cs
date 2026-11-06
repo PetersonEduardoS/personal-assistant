@@ -25,17 +25,33 @@ public sealed class WhatsAppClient(HttpClient httpClient, WhatsAppOptions option
     }
 
     public Task SendTemplateAsync(string recipient, string templateName, string languageCode,
+        IReadOnlyList<string>? bodyParameters = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(recipient);
         ArgumentException.ThrowIfNullOrWhiteSpace(templateName);
         ArgumentException.ThrowIfNullOrWhiteSpace(languageCode);
+        if (bodyParameters?.Any(string.IsNullOrWhiteSpace) == true)
+            throw new ArgumentException("Template parameters cannot be empty.", nameof(bodyParameters));
+
+        var template = new Dictionary<string, object>
+        {
+            ["name"] = templateName,
+            ["language"] = new { code = languageCode }
+        };
+        if (bodyParameters is { Count: > 0 })
+        {
+            template["components"] = new[]
+            {
+                new { type = "body", parameters = bodyParameters.Select(value => new { type = "text", text = value }).ToArray() }
+            };
+        }
         return SendAsync(new
         {
             messaging_product = "whatsapp",
             to = recipient,
             type = "template",
-            template = new { name = templateName, language = new { code = languageCode } }
+            template
         }, cancellationToken);
     }
 

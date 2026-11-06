@@ -240,3 +240,10 @@ variables to disable the new scheduling and test route. No new migration is
 required by this release. Verify the health endpoint, production startup logs,
 manual send result, and reply-triggered delivery before considering the release
 verified.
+
+Template integration: `morning_brief_ready` uses two positional BODY text
+parameters: user name and `PortugueseDates.FormatShort` for the Dublin brief date.
+The actual Meta template was checked on 6 November 2026 and was still `PENDING`;
+real template/reply validation remains pending approval. The successful production
+test so far sent the full brief inside the open 24-hour window. Do not treat that
+as proof that template delivery has been validated.

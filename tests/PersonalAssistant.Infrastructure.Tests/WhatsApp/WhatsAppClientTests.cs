@@ -111,6 +111,34 @@ public class WhatsAppClientTests
         Assert.Equal("Bearer test-access-token", handler.LastHeaders["Authorization"]);
     }
 
+    [Fact]
+    public async Task SendTemplateAsync_SendsNameAndDateAsOrderedBodyTextParameters()
+    {
+        var (client, handler) = CreateClient(HttpStatusCode.OK, SuccessResponse);
+        await client.SendTemplateAsync("353800000001", "morning_brief_ready", "pt_BR",
+            ["Eduardo", "sexta, 6 de novembro"]);
+
+        using var body = JsonDocument.Parse(handler.LastRequestBody!);
+        var components = body.RootElement.GetProperty("template").GetProperty("components");
+        Assert.Equal(1, components.GetArrayLength());
+        Assert.Equal("body", components[0].GetProperty("type").GetString());
+        var parameters = components[0].GetProperty("parameters");
+        Assert.Equal(2, parameters.GetArrayLength());
+        Assert.Equal("text", parameters[0].GetProperty("type").GetString());
+        Assert.Equal("Eduardo", parameters[0].GetProperty("text").GetString());
+        Assert.Equal("text", parameters[1].GetProperty("type").GetString());
+        Assert.Equal("sexta, 6 de novembro", parameters[1].GetProperty("text").GetString());
+    }
+
+    [Fact]
+    public async Task SendTemplateAsync_RejectsEmptyParametersBeforeCallingMeta()
+    {
+        var (client, handler) = CreateClient(HttpStatusCode.OK, SuccessResponse);
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            client.SendTemplateAsync("353800000001", "morning_brief_ready", "pt_BR", [" "]));
+        Assert.Empty(handler.Requests);
+    }
+
     [Theory]
     [InlineData("{\"error\":{\"code\":132001,\"message\":\"Template missing\",\"error_data\":{\"details\":\"Check language\"}}}")]
     [InlineData("Bad Gateway")]

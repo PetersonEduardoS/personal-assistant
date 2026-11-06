@@ -140,6 +140,14 @@ public class MorningBriefSchedulerTests
         Assert.Equal(1, fixture.Sender.Templates);
     }
 
+    [Fact]
+    public async Task RunAsync_FillsApprovedTemplateFieldsWithUserAndLocalDate()
+    {
+        var fixture = new Fixture();
+        await fixture.Scheduler.RunAsync(fixture.User);
+        Assert.Equal(new[] { "Eduardo", "sexta, 6 de novembro" }, fixture.Sender.BodyParameters);
+    }
+
     private sealed class Fixture
     {
         public DateTimeOffset Now { get; }
@@ -196,16 +204,22 @@ public class MorningBriefSchedulerTests
     {
         public int Texts { get; private set; }
         public int Templates { get; private set; }
+        public IReadOnlyList<string>? BodyParameters { get; private set; }
         public bool Fail { get; set; }
         public Task SendTextAsync(string recipient, string text, CancellationToken cancellationToken = default)
         {
             Texts++;
             return Task.CompletedTask;
         }
-        public Task SendTemplateAsync(string recipient, string templateName, string languageCode, CancellationToken cancellationToken = default)
+        public Task SendTemplateAsync(string recipient, string templateName, string languageCode,
+            IReadOnlyList<string>? bodyParameters = null, CancellationToken cancellationToken = default)
         {
             Assert.Equal("morning_brief_ready", templateName);
             Assert.Equal("pt_BR", languageCode);
+            Assert.NotNull(bodyParameters);
+            Assert.Equal(2, bodyParameters.Count);
+            Assert.Equal("Eduardo", bodyParameters[0]);
+            BodyParameters = bodyParameters;
             Templates++;
             return Fail ? Task.FromException(new HttpRequestException("Timeout")) : Task.CompletedTask;
         }

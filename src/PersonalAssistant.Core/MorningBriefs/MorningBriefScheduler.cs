@@ -72,7 +72,8 @@ public sealed class MorningBriefScheduler(
                 ? MorningBriefResult.TextSent : MorningBriefResult.AlreadyPrepared;
         }
 
-        await sender.SendTemplateAsync(user.PhoneNumber, TemplateName, TemplateLanguage, cancellationToken);
+        await sender.SendTemplateAsync(user.PhoneNumber, TemplateName, TemplateLanguage,
+            [user.Name, PortugueseDates.FormatShort(date)], cancellationToken);
         return MorningBriefResult.TemplateSent;
     }
 
