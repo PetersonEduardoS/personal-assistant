@@ -53,6 +53,7 @@ public static class ServiceCollectionExtensions
 
         // Processing and replying
         services.AddTransient<IncomingMessageProcessor>();
+        services.AddTransient<MorningBriefWriter>();
         services.AddHttpClient<IAssistantClient, ClaudeClient>();
         services.AddHttpClient<IMessageSender, WhatsAppClient>();
         services.AddHostedService<IncomingMessageWorker>();
