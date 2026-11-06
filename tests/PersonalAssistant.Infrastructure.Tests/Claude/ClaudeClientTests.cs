@@ -245,6 +245,23 @@ public class ClaudeClientTests
         Assert.Equal("Vou pesquisar. Hoje faz 12 graus em Dublin.", reply);
     }
 
+    [Fact]
+    public async Task GetReplyAsync_ExplainsTokenExhaustionWithoutExposingReasoning()
+    {
+        const string response = """
+            { "stop_reason": "max_tokens", "content": [
+              { "type": "thinking", "thinking": "private reasoning" },
+              { "type": "server_tool_use", "name": "web_search" },
+              { "type": "web_search_tool_result", "content": [] }
+            ] }
+            """;
+        var (client, _) = CreateClient(HttpStatusCode.OK, response);
+        var exception = await Assert.ThrowsAsync<ClaudeApiException>(() => client.GetReplyAsync(Request("Weather")));
+        Assert.Contains("stop_reason: max_tokens", exception.Message);
+        Assert.Contains("max_tokens: 300", exception.Message);
+        Assert.DoesNotContain("private reasoning", exception.Message);
+    }
+
     private static AssistantRequest Request(string text) =>
         new("Eduardo", [new ConversationTurn(ConversationRole.User, text)]);
 

@@ -50,7 +50,9 @@ public sealed class ClaudeClient(HttpClient httpClient, ClaudeOptions options) :
 
         if (string.IsNullOrWhiteSpace(text))
         {
-            throw new ClaudeApiException(response.StatusCode, "Claude API returned no text.");
+            var blockTypes = string.Join(", ", (body?.Content ?? []).Select(block => block.Type));
+            throw new ClaudeApiException(response.StatusCode,
+                $"Claude API returned no text (stop_reason: {body?.StopReason ?? "unknown"}; max_tokens: {options.MaxTokens}; blocks: {blockTypes}).");
         }
 
         return text;
@@ -165,6 +167,9 @@ internal sealed record UserLocation(
 
 internal sealed class MessagesResponse
 {
+    [JsonPropertyName("stop_reason")]
+    public string? StopReason { get; set; }
+
     [JsonPropertyName("content")]
     public List<ContentBlock>? Content { get; set; }
 }

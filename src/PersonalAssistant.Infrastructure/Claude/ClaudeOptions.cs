@@ -12,7 +12,8 @@ public sealed class ClaudeOptions
 
     public string Model { get; set; } = "claude-haiku-5-5";
 
-    public int MaxTokens { get; set; } = 1024;
+    // Web search and model reasoning share this budget with the final reply.
+    public int MaxTokens { get; set; } = 4096;
 
     public string SystemPrompt { get; set; } =
         "Você é o assistente pessoal do Eduardo e da Karina e responde pelo WhatsApp. " +
