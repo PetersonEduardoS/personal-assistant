@@ -51,20 +51,27 @@ public static class ServiceCollectionExtensions
                 .GetSection(UserDirectory.SectionName)
                 .Get<UserProfile[]>() ?? []));
         services.AddSingleton<IUserContextProvider, FileUserContextProvider>();
+        services.AddSingleton<IMorningBriefRoutineProvider, FileMorningBriefRoutineProvider>();
         services.AddSingleton<WebhookPayloadParser>();
         services.AddSingleton<IIncomingMessageQueue, InMemoryIncomingMessageQueue>();
 
         // Processing and replying
         services.AddTransient<IncomingMessageProcessor>();
         services.AddTransient<MorningBriefWriter>();
+        services.AddTransient<MorningBriefScheduler>();
+        services.AddSingleton<MorningBriefDeliveryGate>();
+        services.AddTransient<MorningBriefDelivery>();
 
         // Daily brief: the users' time zone and their work shifts
         services.AddSingleton(TimeZoneInfo.FindSystemTimeZoneById(UsersTimeZoneId));
-        services.AddHttpClient<IWorkScheduleProvider, CalendarFeedWorkScheduleProvider>(client =>
+        services.AddMemoryCache();
+        services.AddHttpClient<CalendarFeedWorkScheduleProvider>(client =>
             client.Timeout = TimeSpan.FromSeconds(15));
+        services.AddTransient<IWorkScheduleProvider, CachedWorkScheduleProvider>();
         services.AddHttpClient<IAssistantClient, ClaudeClient>();
         services.AddHttpClient<IMessageSender, WhatsAppClient>();
         services.AddHostedService<IncomingMessageWorker>();
+        services.AddHostedService<MorningBriefWorker>();
 
         return services;
     }

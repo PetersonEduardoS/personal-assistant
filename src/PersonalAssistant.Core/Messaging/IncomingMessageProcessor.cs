@@ -1,4 +1,5 @@
 using PersonalAssistant.Core.Assistant;
+using PersonalAssistant.Core.MorningBriefs;
 using PersonalAssistant.Core.Conversations;
 using PersonalAssistant.Core.Users;
 using PersonalAssistant.Core.WhatsApp;
@@ -16,7 +17,9 @@ public sealed class IncomingMessageProcessor(
     UserDirectory userDirectory,
     IConversationStore conversationStore,
     IUserContextProvider userContextProvider,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider,
+    MorningBriefDelivery briefDelivery,
+    TimeZoneInfo timeZone)
 {
     public const int HistoryLimit = 20;
 
@@ -56,6 +59,10 @@ public sealed class IncomingMessageProcessor(
         {
             return MessageProcessingResult.Duplicate;
         }
+
+        var today = DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(timeProvider.GetUtcNow(), timeZone).DateTime);
+        if (await briefDelivery.TryDeliverAsync(message.From, today, cancellationToken))
+            return MessageProcessingResult.BriefDelivered;
 
         var conversation = await conversationStore.GetRecentTurnsAsync(message.From, HistoryLimit, cancellationToken);
         var userContext = await userContextProvider.GetContextAsync(user, cancellationToken);

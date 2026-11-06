@@ -28,6 +28,8 @@ public sealed class UserDirectory
             ? null
             : _usersByPhoneNumber.GetValueOrDefault(Normalize(phoneNumber));
 
+    public IReadOnlyCollection<UserProfile> All => _usersByPhoneNumber.Values;
+
     private static string Normalize(string? phoneNumber) =>
         new((phoneNumber ?? string.Empty).Where(char.IsAsciiDigit).ToArray());
 }

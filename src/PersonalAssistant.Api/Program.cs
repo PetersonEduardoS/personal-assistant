@@ -9,5 +9,6 @@ var app = builder.Build();
 
 app.MapGet("/", () => "Personal Assistant is running");
 app.MapWhatsAppWebhookEndpoints();
+app.MapMorningBriefTestEndpoints();
 
 app.Run();

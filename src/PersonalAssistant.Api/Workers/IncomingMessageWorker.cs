@@ -43,6 +43,9 @@ public sealed class IncomingMessageWorker(
     {
         switch (result)
         {
+            case MessageProcessingResult.BriefDelivered:
+                logger.LogInformation("Delivered stored morning brief in response to message {MessageId}", message.MessageId);
+                break;
             case MessageProcessingResult.Replied:
                 logger.LogInformation("Replied to message {MessageId}", message.MessageId);
                 break;

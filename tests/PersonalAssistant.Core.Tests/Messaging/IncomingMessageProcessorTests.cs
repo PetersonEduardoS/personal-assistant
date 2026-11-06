@@ -1,4 +1,5 @@
 using PersonalAssistant.Core.Assistant;
+using PersonalAssistant.Core.MorningBriefs;
 using PersonalAssistant.Core.Messaging;
 using PersonalAssistant.Core.Users;
 using PersonalAssistant.Core.WhatsApp;
@@ -19,6 +20,7 @@ public class IncomingMessageProcessorTests
 
     private readonly FakeConversationStore _store = new();
     private readonly FakeMessageSender _sender = new();
+    private readonly FakeMorningBriefStore _briefs = new();
 
     [Fact]
     public async Task ProcessAsync_SendsAssistantReply_ToSender()
@@ -157,6 +159,37 @@ public class IncomingMessageProcessorTests
         Assert.Single(_sender.SentMessages);
     }
 
+    [Fact]
+    public async Task ProcessAsync_DeliversTodaysBriefAndNextMessageCanDiscussIt()
+    {
+        var date = DateOnly.FromDateTime(Now.DateTime);
+        await _briefs.TryAddAsync(Eduardo, date, "Bom dia! Treino às 11h.");
+        var assistant = new FakeAssistantClient("Pode treinar depois.");
+        var processor = CreateProcessor(assistant);
+
+        Assert.Equal(MessageProcessingResult.BriefDelivered, await processor.ProcessAsync(Message));
+        Assert.Empty(assistant.ReceivedRequests);
+        Assert.Equal("Bom dia! Treino às 11h.", Assert.Single(_sender.SentMessages).Text);
+        Assert.True((await _briefs.GetAsync(Eduardo, date))!.IsDelivered);
+        Assert.Equal(MessageProcessingResult.Duplicate, await processor.ProcessAsync(Message));
+
+        await processor.ProcessAsync(Message with { MessageId = "wamid.NEXT", Text = "E se eu treinar mais tarde?" });
+        var request = Assert.Single(assistant.ReceivedRequests);
+        Assert.Contains(request.Conversation, turn => turn.Role == ConversationRole.Assistant && turn.Content == "Bom dia! Treino às 11h.");
+        Assert.Equal(2, _sender.SentMessages.Count);
+    }
+
+    [Fact]
+    public async Task ProcessAsync_DoesNotDeliverYesterdaysBrief()
+    {
+        await _briefs.TryAddAsync(Eduardo, DateOnly.FromDateTime(Now.DateTime).AddDays(-1), "Old brief");
+        var assistant = new FakeAssistantClient("Olá!");
+        Assert.Equal(MessageProcessingResult.Replied, await CreateProcessor(assistant).ProcessAsync(Message));
+        Assert.Single(assistant.ReceivedRequests);
+    }
+
     private IncomingMessageProcessor CreateProcessor(IAssistantClient assistant, string? userContext = null) =>
-        new(assistant, _sender, Users, _store, new FakeUserContextProvider(userContext), new FixedTimeProvider(Now));
+        new(assistant, _sender, Users, _store, new FakeUserContextProvider(userContext), new FixedTimeProvider(Now),
+            new MorningBriefDelivery(_briefs, _sender, _store, new MorningBriefDeliveryGate()),
+            TimeZoneInfo.FindSystemTimeZoneById("Europe/Dublin"));
 }

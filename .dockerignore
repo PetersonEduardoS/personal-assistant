@@ -16,6 +16,8 @@
 **/.env
 *key*.txt
 *.key
+**/*.local.json
+local/
 
 # Git
 .git/

@@ -140,3 +140,103 @@ Register `https://<your-app>.up.railway.app/webhooks/whatsapp` as the callback U
 - [x] Hosting on Railway
 - [ ] Phase 3: Email summaries with suggested replies saved as Gmail drafts
 - [ ] Phase 4: Usage alerts
+
+### Backlog
+
+- [ ] Events and reminders through WhatsApp (after completing stored morning brief delivery)
+  - Save events in the database from messages such as “Tenho dentista dia 18 às 9h, na clínica X”.
+  - Confirm the date, Dublin time and location; ask for missing or ambiguous details.
+  - Include saved events in the daily brief and use their preparation/travel time to adjust the brief's scheduled time.
+  - Support listing, editing and cancelling saved events.
+  - Send requested reminders at the agreed time, respecting WhatsApp's 24-hour window and approved template requirements.
+
+## Daily morning briefs
+
+Set `Users__0__MorningBriefTime` (for example `07:30`) and
+`Users__1__MorningBriefTime` (for example `08:00`) in Railway to enable the
+scheduler for each user. Omit the setting to leave that user's schedule disabled.
+Times are interpreted in `Europe/Dublin`, including summer time; they do not use
+the server's local timezone. The template `morning_brief_ready` in `pt_BR` must
+be approved in the WhatsApp account before enabling automatic briefs.
+
+The worker checks every minute and at startup. It catches up for up to one hour
+after the scheduled time; a later restart waits until the next day. It reads work
+shifts, generates the brief and saves it before sending. Within the 24-hour
+customer service window it sends the text and adds it to conversation history.
+Outside that window it sends the template and keeps the brief undelivered.
+When the user replies, today's undelivered brief is sent and added to conversation history before normal chat resumes on the next message. Delivery is serialized within the single running replica; keep one replica while using the SQLite volume. A network timeout after Meta accepts a message can still cause a duplicate on a later retry.
+
+A stored brief prevents another scheduled send on the same day, including after
+restarts. This intentionally favors avoiding duplicates: if a send fails or the
+process stops between saving and sending, the worker does not retry that stored
+brief automatically. Inspect `Morning brief failed` and the structured Meta error
+logs to investigate. `TextSent` means the API accepted the text, not a WhatsApp
+read or delivery receipt. Generation failures before saving can retry on the next
+minute, within the catch-up window. No database migration is needed for scheduling.
+
+### Routine-based timing
+
+As an alternative to a fixed time, set `Users__0__MorningBriefRoutineFilePath`
+to a private JSON file on the volume, for example
+`/data/contexts/eduardo.routine.local.json`. This takes precedence over
+`MorningBriefTime`. Without either setting the user's scheduler is disabled.
+The routine is reloaded each minute; a configured missing or malformed file logs
+an error instead of silently switching to a different time.
+
+```json
+{
+  "PreparationMinutes": 30,
+  "WorkTravelMinutes": 25,
+  "LatestTime": "09:00:00",
+  "Appointments": [
+    {
+      "Name": "Weekly class",
+      "DayOfWeek": "Thursday",
+      "From": "2026-08-24",
+      "Until": "2026-12-31",
+      "Start": "08:30:00",
+      "TravelMinutes": 25
+    },
+    {
+      "Name": "Dated class",
+      "Date": "2026-11-17",
+      "Start": "10:00:00",
+      "TravelMinutes": 75
+    }
+  ]
+}
+```
+
+The earliest appointment or work shift determines the brief time, subtracting
+preparation and travel (including the arrival margin), capped at `LatestTime`.
+For example: 08:30 class - 25 minutes travel - 30 preparation = 07:35 brief;
+10:00 dated class - 75 travel - 30 preparation = 08:15. Free days and afternoon-only
+days use 09:00. Early shifts clamp at midnight instead of wrapping into the evening.
+Weekly appointments require an explicit date range, so a finished semester does
+not keep affecting the next year's schedule. Add holiday exceptions by adjusting
+these ranges. Suggested gym sessions are not fixed appointments.
+
+Travel times are planning estimates, not live route or bus predictions. The work
+feed is cached for five minutes (one minute on failure). If unavailable, timing
+uses known classes or the latest time; it cannot account for an unknown early shift.
+Keep personal routine files outside Git (`*.local.json` is ignored) and upload them
+with the private context files. The local Eduardo routine uses the ten LVA dates
+from his context and a provisional CCT end date of 31 December 2026; adjust this
+when the final term/holiday dates are known. Karina can continue using a fixed time.
+
+
+### Protected manual brief test
+
+Set a random `MorningBriefs__TestKey` with at least 32 characters to enable
+`POST /admin/morning-briefs/test/0` (0 is the first registered user). Send the key
+in `X-Morning-Brief-Key`. The route is disabled without a sufficiently long key;
+it accepts only registered user indexes. Never put the key in a URL or commit it.
+The test bypasses the scheduled time but still creates at most one brief for that
+user/date: a successful test counts as today's brief and prevents a second
+scheduled notification. Remove the key after testing to disable the endpoint.
+
+Rollback: redeploy the previous successful image and remove the routine/test-key
+variables to disable the new scheduling and test route. No new migration is
+required by this release. Verify the health endpoint, production startup logs,
+manual send result, and reply-triggered delivery before considering the release
+verified.

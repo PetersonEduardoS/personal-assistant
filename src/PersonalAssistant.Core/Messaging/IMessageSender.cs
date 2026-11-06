@@ -6,4 +6,7 @@ namespace PersonalAssistant.Core.Messaging;
 public interface IMessageSender
 {
     Task SendTextAsync(string recipient, string text, CancellationToken cancellationToken = default);
+
+    Task SendTemplateAsync(string recipient, string templateName, string languageCode,
+        CancellationToken cancellationToken = default);
 }

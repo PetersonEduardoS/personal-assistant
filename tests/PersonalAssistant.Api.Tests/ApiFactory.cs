@@ -19,6 +19,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
     public const string AllowedSender = "353800000001";
 
     public FakeIncomingMessageQueue Queue { get; } = new();
+    public string? MorningBriefTestKey { get; set; }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -31,7 +32,8 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
                 ["WhatsApp:VerifyToken"] = VerifyToken,
                 ["WhatsApp:AppSecret"] = AppSecret,
                 ["Users:0:PhoneNumber"] = AllowedSender,
-                ["Users:0:Name"] = "Test User"
+                ["Users:0:Name"] = "Test User",
+                ["MorningBriefs:TestKey"] = MorningBriefTestKey
             });
         });
 

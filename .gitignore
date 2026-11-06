@@ -53,3 +53,6 @@ Desktop.ini
 ## Key files that must never be committed
 *key*.txt
 *.key
+
+# Private routine and context staging
+/local/

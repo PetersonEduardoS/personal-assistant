@@ -2,8 +2,24 @@ using PersonalAssistant.Core.Assistant;
 using PersonalAssistant.Core.Conversations;
 using PersonalAssistant.Core.Messaging;
 using PersonalAssistant.Core.Users;
+using PersonalAssistant.Core.MorningBriefs;
 
 namespace PersonalAssistant.Core.Tests.Messaging;
+
+internal sealed class FakeMorningBriefStore : IMorningBriefStore
+{
+    public Dictionary<(string Phone, DateOnly Date), MorningBrief> Briefs { get; } = [];
+    public Task<MorningBrief?> GetAsync(string phoneNumber, DateOnly date, CancellationToken cancellationToken = default) =>
+        Task.FromResult(Briefs.GetValueOrDefault((phoneNumber, date)));
+    public Task<bool> TryAddAsync(string phoneNumber, DateOnly date, string content, CancellationToken cancellationToken = default) =>
+        Task.FromResult(Briefs.TryAdd((phoneNumber, date), new(phoneNumber, date, content, null)));
+    public Task<bool> TryMarkDeliveredAsync(string phoneNumber, DateOnly date, CancellationToken cancellationToken = default)
+    {
+        if (!Briefs.TryGetValue((phoneNumber, date), out var brief) || brief.IsDelivered) return Task.FromResult(false);
+        Briefs[(phoneNumber, date)] = brief with { DeliveredAt = DateTimeOffset.UtcNow };
+        return Task.FromResult(true);
+    }
+}
 
 internal sealed class FakeAssistantClient : IAssistantClient
 {
@@ -30,6 +46,9 @@ internal sealed class FakeAssistantClient : IAssistantClient
 
 internal sealed class FakeMessageSender : IMessageSender
 {
+    public Task SendTemplateAsync(string recipient, string templateName, string languageCode,
+        CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
     public List<(string Recipient, string Text)> SentMessages { get; } = [];
 
     public Task SendTextAsync(string recipient, string text, CancellationToken cancellationToken = default)

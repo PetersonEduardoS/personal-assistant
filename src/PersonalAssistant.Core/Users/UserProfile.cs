@@ -16,4 +16,10 @@ public sealed class UserProfile
     /// It is a secret: anyone with the link can see the shifts.
     /// </summary>
     public string? ShiftsCalendarUrl { get; set; }
+
+    /// <summary>Daily brief time in Dublin. Null disables automatic briefs for this user.</summary>
+    public TimeOnly? MorningBriefTime { get; set; }
+
+    /// <summary>Private structured routine. When set, computes the brief time instead of MorningBriefTime.</summary>
+    public string? MorningBriefRoutineFilePath { get; set; }
 }
