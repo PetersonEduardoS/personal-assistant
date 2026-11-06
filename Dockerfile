@@ -21,6 +21,11 @@ RUN dotnet publish src/PersonalAssistant.Api/PersonalAssistant.Api.csproj -c Rel
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 
+# Time zone data, used to convert shift times to Dublin time (summer time included)
+RUN apt-get update \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends tzdata \
+    && rm -rf /var/lib/apt/lists/*
+
 # Folder for the database and the context files (a volume is mounted here in production)
 RUN mkdir -p /data/contexts && chown -R $APP_UID /data
 

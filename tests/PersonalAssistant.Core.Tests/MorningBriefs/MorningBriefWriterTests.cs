@@ -2,6 +2,7 @@ using PersonalAssistant.Core.Assistant;
 using PersonalAssistant.Core.MorningBriefs;
 using PersonalAssistant.Core.Tests.Messaging;
 using PersonalAssistant.Core.Users;
+using PersonalAssistant.Core.WorkSchedules;
 
 namespace PersonalAssistant.Core.Tests.MorningBriefs;
 
@@ -16,7 +17,7 @@ public class MorningBriefWriterTests
     {
         var writer = CreateWriter(new FakeAssistantClient("Bom dia, Eduardo!"));
 
-        var brief = await writer.WriteAsync(Eduardo, Friday, shifts: []);
+        var brief = await writer.WriteAsync(Eduardo, Friday, WorkSchedule.WithShifts([]));
 
         Assert.Equal("Bom dia, Eduardo!", brief);
     }
@@ -27,7 +28,7 @@ public class MorningBriefWriterTests
         var assistant = new FakeAssistantClient("Bom dia!");
         var writer = CreateWriter(assistant, userContext: "Treina na Flyefit.");
 
-        await writer.WriteAsync(Eduardo, Friday, shifts: []);
+        await writer.WriteAsync(Eduardo, Friday, WorkSchedule.WithShifts([]));
 
         var request = Assert.Single(assistant.ReceivedRequests);
         Assert.Equal("Eduardo", request.UserName);
@@ -40,7 +41,7 @@ public class MorningBriefWriterTests
         var assistant = new FakeAssistantClient("Bom dia!");
         var writer = CreateWriter(assistant);
 
-        await writer.WriteAsync(Eduardo, Friday, shifts: []);
+        await writer.WriteAsync(Eduardo, Friday, WorkSchedule.WithShifts([]));
 
         var instruction = SingleInstruction(assistant);
         Assert.Contains("sexta-feira, 6 de novembro de 2026", instruction);
@@ -58,7 +59,7 @@ public class MorningBriefWriterTests
         var writer = CreateWriter(assistant);
         WorkShift[] shifts = [new(new TimeOnly(9, 0), new TimeOnly(13, 0), "Bar")];
 
-        await writer.WriteAsync(Eduardo, Friday, shifts);
+        await writer.WriteAsync(Eduardo, Friday, WorkSchedule.WithShifts(shifts));
 
         Assert.Contains("- Bar: das 09:00 até as 13:00", SingleInstruction(assistant));
     }
@@ -70,7 +71,7 @@ public class MorningBriefWriterTests
         var writer = CreateWriter(assistant);
         WorkShift[] shifts = [new(new TimeOnly(17, 0), new TimeOnly(1, 0), "Bar")];
 
-        await writer.WriteAsync(Eduardo, Friday, shifts);
+        await writer.WriteAsync(Eduardo, Friday, WorkSchedule.WithShifts(shifts));
 
         Assert.Contains("- Bar: das 17:00 até as 01:00 do dia seguinte", SingleInstruction(assistant));
     }
@@ -81,22 +82,36 @@ public class MorningBriefWriterTests
         var assistant = new FakeAssistantClient("Bom dia!");
         var writer = CreateWriter(assistant);
 
-        await writer.WriteAsync(Eduardo, Friday, shifts: []);
+        await writer.WriteAsync(Eduardo, Friday, WorkSchedule.WithShifts([]));
 
         Assert.Contains(MorningBriefWriter.NoShiftsLine, SingleInstruction(assistant));
     }
 
     [Fact]
-    public async Task WriteAsync_SaysTheScheduleIsUnknown_WhenShiftsAreNotAvailable()
+    public async Task WriteAsync_SaysTheScheduleIsUnknown_WhenItIsUnavailable()
     {
         var assistant = new FakeAssistantClient("Bom dia!");
         var writer = CreateWriter(assistant);
 
-        await writer.WriteAsync(Eduardo, Friday, shifts: null);
+        await writer.WriteAsync(Eduardo, Friday, WorkSchedule.Unavailable);
 
         var instruction = SingleInstruction(assistant);
         Assert.Contains(MorningBriefWriter.UnknownShiftsLine, instruction);
         Assert.DoesNotContain(MorningBriefWriter.NoShiftsLine, instruction);
+    }
+
+    [Fact]
+    public async Task WriteAsync_LeavesShiftsOut_WhenUserHasNoWorkSchedule()
+    {
+        var assistant = new FakeAssistantClient("Bom dia!");
+        var writer = CreateWriter(assistant);
+
+        await writer.WriteAsync(Eduardo, Friday, WorkSchedule.NotConfigured);
+
+        var instruction = SingleInstruction(assistant);
+        Assert.DoesNotContain(MorningBriefWriter.ShiftsHeader, instruction);
+        Assert.DoesNotContain(MorningBriefWriter.NoShiftsLine, instruction);
+        Assert.DoesNotContain(MorningBriefWriter.UnknownShiftsLine, instruction);
     }
 
     private static string SingleInstruction(FakeAssistantClient assistant)

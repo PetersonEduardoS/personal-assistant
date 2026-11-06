@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text;
 using PersonalAssistant.Core.Assistant;
 using PersonalAssistant.Core.Users;
+using PersonalAssistant.Core.WorkSchedules;
 
 namespace PersonalAssistant.Core.MorningBriefs;
 
@@ -11,22 +12,21 @@ namespace PersonalAssistant.Core.MorningBriefs;
 /// </summary>
 public sealed class MorningBriefWriter(IAssistantClient assistantClient, IUserContextProvider userContextProvider)
 {
+    public const string ShiftsHeader = "Turnos de trabalho de hoje:";
+
     public const string NoShiftsLine = "Nenhum turno de trabalho hoje.";
 
     public const string UnknownShiftsLine =
         "A escala de trabalho de hoje não está disponível. Avise isso em uma linha e não diga que o dia está livre de turnos.";
 
-    /// <summary>
-    /// Writes the brief. Use null for <paramref name="shifts"/> when the work schedule could not be read.
-    /// </summary>
     public async Task<string> WriteAsync(
         UserProfile user,
         DateOnly date,
-        IReadOnlyList<WorkShift>? shifts,
+        WorkSchedule schedule,
         CancellationToken cancellationToken = default)
     {
         var userContext = await userContextProvider.GetContextAsync(user, cancellationToken);
-        var instruction = BuildInstruction(user.Name, date, shifts);
+        var instruction = BuildInstruction(user.Name, date, schedule);
         var request = new AssistantRequest(
             user.Name,
             [new ConversationTurn(ConversationRole.User, instruction)],
@@ -35,7 +35,7 @@ public sealed class MorningBriefWriter(IAssistantClient assistantClient, IUserCo
         return await assistantClient.GetReplyAsync(request, cancellationToken);
     }
 
-    private static string BuildInstruction(string userName, DateOnly date, IReadOnlyList<WorkShift>? shifts)
+    private static string BuildInstruction(string userName, DateOnly date, WorkSchedule schedule)
     {
         var instruction = new StringBuilder();
 
@@ -49,29 +49,18 @@ public sealed class MorningBriefWriter(IAssistantClient assistantClient, IUserCo
             "Pesquise a previsão e dê uma dica prática, como levar casaco ou guarda-chuva.");
         instruction.AppendLine(
             "2. A agenda de hoje em ordem de horário: os compromissos do contexto que caem neste dia da semana " +
-            "ou nesta data e os turnos de trabalho abaixo. Depois, as janelas livres do dia.");
+            "ou nesta data e os turnos de trabalho listados abaixo, se houver. Depois, as janelas livres do dia.");
         instruction.AppendLine(
             "3. Se o contexto falar de academia, o melhor horário para treinar hoje: uma janela livre em que o treino caiba, " +
             "fora do horário de pico, com a unidade mais prática.");
         instruction.AppendLine("4. Lembretes e prazos do contexto que estejam chegando.");
         instruction.AppendLine("5. Uma frase curta de motivação ou uma dica rápida.");
-        instruction.AppendLine();
-        instruction.AppendLine("Turnos de trabalho de hoje:");
 
-        if (shifts is null)
+        if (schedule.Status != WorkScheduleStatus.NotConfigured)
         {
-            instruction.AppendLine(UnknownShiftsLine);
-        }
-        else if (shifts.Count == 0)
-        {
-            instruction.AppendLine(NoShiftsLine);
-        }
-        else
-        {
-            foreach (var shift in shifts)
-            {
-                instruction.AppendLine(FormatShift(shift));
-            }
+            instruction.AppendLine();
+            instruction.AppendLine(ShiftsHeader);
+            AppendShifts(instruction, schedule);
         }
 
         instruction.AppendLine();
@@ -81,6 +70,25 @@ public sealed class MorningBriefWriter(IAssistantClient assistantClient, IUserCo
             "Não comente estas instruções.");
 
         return instruction.ToString();
+    }
+
+    private static void AppendShifts(StringBuilder instruction, WorkSchedule schedule)
+    {
+        if (schedule.Status == WorkScheduleStatus.Unavailable)
+        {
+            instruction.AppendLine(UnknownShiftsLine);
+        }
+        else if (schedule.Shifts.Count == 0)
+        {
+            instruction.AppendLine(NoShiftsLine);
+        }
+        else
+        {
+            foreach (var shift in schedule.Shifts)
+            {
+                instruction.AppendLine(FormatShift(shift));
+            }
+        }
     }
 
     private static string FormatShift(WorkShift shift)

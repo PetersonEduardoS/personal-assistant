@@ -9,16 +9,19 @@ using PersonalAssistant.Core.Messaging;
 using PersonalAssistant.Core.MorningBriefs;
 using PersonalAssistant.Core.Users;
 using PersonalAssistant.Core.WhatsApp;
+using PersonalAssistant.Core.WorkSchedules;
 using PersonalAssistant.Infrastructure.Claude;
 using PersonalAssistant.Infrastructure.Persistence;
 using PersonalAssistant.Infrastructure.Users;
 using PersonalAssistant.Infrastructure.WhatsApp;
+using PersonalAssistant.Infrastructure.WorkSchedules;
 
 namespace PersonalAssistant.Api.Extensions;
 
 public static class ServiceCollectionExtensions
 {
     private const string DefaultDatabasePath = "Data/personal-assistant.db";
+    private const string UsersTimeZoneId = "Europe/Dublin";
 
     public static IServiceCollection AddPersonalAssistant(
         this IServiceCollection services,
@@ -54,6 +57,11 @@ public static class ServiceCollectionExtensions
         // Processing and replying
         services.AddTransient<IncomingMessageProcessor>();
         services.AddTransient<MorningBriefWriter>();
+
+        // Daily brief: the users' time zone and their work shifts
+        services.AddSingleton(TimeZoneInfo.FindSystemTimeZoneById(UsersTimeZoneId));
+        services.AddHttpClient<IWorkScheduleProvider, CalendarFeedWorkScheduleProvider>(client =>
+            client.Timeout = TimeSpan.FromSeconds(15));
         services.AddHttpClient<IAssistantClient, ClaudeClient>();
         services.AddHttpClient<IMessageSender, WhatsAppClient>();
         services.AddHostedService<IncomingMessageWorker>();
