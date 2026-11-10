@@ -17,6 +17,12 @@ public sealed class UserProfile
     /// </summary>
     public string? ShiftsCalendarUrl { get; set; }
 
+    /// <summary>
+    /// Link to the iCalendar export of the user's college calendar (Moodle), with assignment deadlines.
+    /// It is a secret: anyone with the link can see the calendar.
+    /// </summary>
+    public string? DeadlinesCalendarUrl { get; set; }
+
     /// <summary>Daily brief time in Dublin. Null disables automatic briefs for this user.</summary>
     public TimeOnly? MorningBriefTime { get; set; }
 

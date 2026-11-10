@@ -93,6 +93,21 @@ public class CalendarFeedReaderTests
     }
 
     [Fact]
+    public void Read_ReadsTheCategories()
+    {
+        var calendar = CalendarFeeds.Calendar(
+            CalendarFeeds.Event(
+                "DTSTART:20261127T235900Z",
+                "DTEND:20261127T235900Z",
+                "SUMMARY:Integrated CA2 (50%) is due",
+                "CATEGORIES:HDSDAD Feb26 FT |HDSDAD-06 |Machine Learning for Business"));
+
+        var calendarEvent = Assert.Single(CalendarFeedReader.Read(calendar));
+
+        Assert.Equal("HDSDAD Feb26 FT |HDSDAD-06 |Machine Learning for Business", calendarEvent.Categories);
+    }
+
+    [Fact]
     public void Read_ReturnsNoEvents_WhenCalendarIsEmpty()
     {
         Assert.Empty(CalendarFeedReader.Read(CalendarFeeds.Calendar()));

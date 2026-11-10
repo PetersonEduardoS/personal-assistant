@@ -1,4 +1,5 @@
 using PersonalAssistant.Core.Assistant;
+using PersonalAssistant.Core.Deadlines;
 using PersonalAssistant.Core.MorningBriefs;
 using PersonalAssistant.Core.Tests.Messaging;
 using PersonalAssistant.Core.Users;
@@ -123,6 +124,95 @@ public class MorningBriefWriterTests
         return turn.Content;
     }
 
-    private static MorningBriefWriter CreateWriter(IAssistantClient assistant, string? userContext = null) =>
-        new(assistant, new FakeUserContextProvider(userContext));
+    [Fact]
+    public async Task WriteAsync_AsksForTheDeadlinesFromTheDayOfTheBrief()
+    {
+        var deadlines = new FakeDeadlineProvider();
+        var writer = CreateWriter(new FakeAssistantClient("Bom dia!"), deadlines: deadlines);
+
+        await writer.WriteAsync(Eduardo, Friday, WorkSchedule.NotConfigured);
+
+        Assert.Equal(new[] { Friday }, deadlines.RequestedDates);
+    }
+
+    [Fact]
+    public async Task WriteAsync_ListsTheDeadlines_WithCourseDateAndTime()
+    {
+        var assistant = new FakeAssistantClient("Bom dia!");
+        Deadline[] list =
+        [
+            new("Integrated CA2 (50%) is due", "Machine Learning for Business", DublinTime(2026, 11, 27, 23, 59))
+        ];
+        var writer = CreateWriter(assistant, deadlines: new FakeDeadlineProvider(UpcomingDeadlines.WithDeadlines(list)));
+
+        await writer.WriteAsync(Eduardo, Friday, WorkSchedule.NotConfigured);
+
+        var instruction = SingleInstruction(assistant);
+        Assert.Contains(MorningBriefWriter.DeadlinesHeader, instruction);
+        Assert.Contains(
+            "- Integrated CA2 (50%) is due (Machine Learning for Business): sexta, 27 de novembro, às 23:59",
+            instruction);
+    }
+
+    [Fact]
+    public async Task WriteAsync_MarksTheDeadlinesDueWithinThreeDays()
+    {
+        var assistant = new FakeAssistantClient("Bom dia!");
+        Deadline[] list =
+        [
+            new("Quiz closes", null, DublinTime(2026, 11, 9, 16, 0)),
+            new("CA2 is due", null, DublinTime(2026, 11, 10, 23, 59))
+        ];
+        var writer = CreateWriter(assistant, deadlines: new FakeDeadlineProvider(UpcomingDeadlines.WithDeadlines(list)));
+
+        await writer.WriteAsync(Eduardo, Friday, WorkSchedule.NotConfigured);
+
+        var instruction = SingleInstruction(assistant);
+        Assert.Contains("- Quiz closes: segunda, 9 de novembro, às 16:00" + MorningBriefWriter.UrgentMark, instruction);
+        Assert.Contains("- CA2 is due: terça, 10 de novembro, às 23:59" + Environment.NewLine, instruction);
+    }
+
+    [Fact]
+    public async Task WriteAsync_SaysThereAreNoDeadlines_WhenTheListIsEmpty()
+    {
+        var assistant = new FakeAssistantClient("Bom dia!");
+        var writer = CreateWriter(assistant, deadlines: new FakeDeadlineProvider(UpcomingDeadlines.WithDeadlines([])));
+
+        await writer.WriteAsync(Eduardo, Friday, WorkSchedule.NotConfigured);
+
+        Assert.Contains(MorningBriefWriter.NoDeadlinesLine, SingleInstruction(assistant));
+    }
+
+    [Fact]
+    public async Task WriteAsync_SaysTheDeadlinesAreUnknown_WhenTheyAreUnavailable()
+    {
+        var assistant = new FakeAssistantClient("Bom dia!");
+        var writer = CreateWriter(assistant, deadlines: new FakeDeadlineProvider(UpcomingDeadlines.Unavailable));
+
+        await writer.WriteAsync(Eduardo, Friday, WorkSchedule.NotConfigured);
+
+        var instruction = SingleInstruction(assistant);
+        Assert.Contains(MorningBriefWriter.UnknownDeadlinesLine, instruction);
+        Assert.DoesNotContain(MorningBriefWriter.NoDeadlinesLine, instruction);
+    }
+
+    [Fact]
+    public async Task WriteAsync_LeavesDeadlinesOut_WhenUserHasNoDeadlinesCalendar()
+    {
+        var assistant = new FakeAssistantClient("Bom dia!");
+        var writer = CreateWriter(assistant);
+
+        await writer.WriteAsync(Eduardo, Friday, WorkSchedule.NotConfigured);
+
+        Assert.DoesNotContain(MorningBriefWriter.DeadlinesHeader, SingleInstruction(assistant));
+    }
+
+    private static DateTimeOffset DublinTime(int year, int month, int day, int hour, int minute) =>
+        new(year, month, day, hour, minute, 0, TimeSpan.Zero);
+
+    private static MorningBriefWriter CreateWriter(
+        IAssistantClient assistant,
+        string? userContext = null,
+        FakeDeadlineProvider? deadlines = null) =>
+        new(assistant, new FakeUserContextProvider(userContext), deadlines ?? new FakeDeadlineProvider());
 }

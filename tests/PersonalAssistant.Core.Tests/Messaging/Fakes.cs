@@ -1,3 +1,4 @@
+using PersonalAssistant.Core.Deadlines;
 using PersonalAssistant.Core.Assistant;
 using PersonalAssistant.Core.Conversations;
 using PersonalAssistant.Core.Messaging;
@@ -135,4 +136,19 @@ internal sealed class FakeUserContextProvider(string? context = null) : IUserCon
 internal sealed class FixedTimeProvider(DateTimeOffset now) : TimeProvider
 {
     public override DateTimeOffset GetUtcNow() => now;
+}
+
+internal sealed class FakeDeadlineProvider(UpcomingDeadlines? deadlines = null) : IDeadlineProvider
+{
+    public List<DateOnly> RequestedDates { get; } = [];
+
+    public Task<UpcomingDeadlines> GetUpcomingAsync(
+        UserProfile user,
+        DateOnly fromDate,
+        CancellationToken cancellationToken = default)
+    {
+        RequestedDates.Add(fromDate);
+
+        return Task.FromResult(deadlines ?? UpcomingDeadlines.NotConfigured);
+    }
 }

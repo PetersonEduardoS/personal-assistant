@@ -71,6 +71,7 @@ Requirements: .NET 10 SDK and ngrok.
    | `Users:0:Name` | Name used by the assistant |
    | `Users:0:ContextFilePath` | Optional path to a Markdown file about the user |
    | `Users:0:ShiftsCalendarUrl` | Optional iCalendar link with the user's work shifts (Findmyshift). Secret |
+   | `Users:0:DeadlinesCalendarUrl` | Optional iCalendar export of the user's Moodle calendar, for college deadlines. Secret |
 
 2. Run the API and expose it with ngrok:
 
@@ -112,6 +113,7 @@ Configuration keys use a double underscore instead of a colon.
 | `Users__0__Name` | Name |
 | `Users__0__ContextFilePath` | `/data/contexts/<name>.md` |
 | `Users__0__ShiftsCalendarUrl` | Optional iCalendar link with the user's work shifts |
+| `Users__0__DeadlinesCalendarUrl` | Optional iCalendar export of the user's Moodle calendar |
 
 Values must be pasted without quotes or extra spaces. A wrong value shows up as a `401` in the Railway logs.
 

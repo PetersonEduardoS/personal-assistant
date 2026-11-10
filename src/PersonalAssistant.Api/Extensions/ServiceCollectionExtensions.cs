@@ -5,6 +5,7 @@ using PersonalAssistant.Api.Database;
 using PersonalAssistant.Api.Workers;
 using PersonalAssistant.Core.Assistant;
 using PersonalAssistant.Core.Conversations;
+using PersonalAssistant.Core.Deadlines;
 using PersonalAssistant.Core.Messaging;
 using PersonalAssistant.Core.MorningBriefs;
 using PersonalAssistant.Core.Users;
@@ -12,6 +13,7 @@ using PersonalAssistant.Core.WhatsApp;
 using PersonalAssistant.Core.WorkSchedules;
 using PersonalAssistant.Infrastructure.Calendars;
 using PersonalAssistant.Infrastructure.Claude;
+using PersonalAssistant.Infrastructure.Deadlines;
 using PersonalAssistant.Infrastructure.Persistence;
 using PersonalAssistant.Infrastructure.Users;
 using PersonalAssistant.Infrastructure.WhatsApp;
@@ -71,6 +73,7 @@ public static class ServiceCollectionExtensions
             .RemoveAllLoggers(); // Calendar URLs are bearer secrets, including their query strings.
         services.AddTransient<CachedCalendarFeed>();
         services.AddTransient<IWorkScheduleProvider, CalendarFeedWorkScheduleProvider>();
+        services.AddTransient<IDeadlineProvider, CalendarFeedDeadlineProvider>();
         services.AddHttpClient<IAssistantClient, ClaudeClient>();
         services.AddHttpClient<IMessageSender, WhatsAppClient>();
         services.AddHostedService<IncomingMessageWorker>();

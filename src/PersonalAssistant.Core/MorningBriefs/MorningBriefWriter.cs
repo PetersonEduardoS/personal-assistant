@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text;
 using PersonalAssistant.Core.Assistant;
+using PersonalAssistant.Core.Deadlines;
 using PersonalAssistant.Core.Users;
 using PersonalAssistant.Core.WorkSchedules;
 
@@ -8,9 +9,12 @@ namespace PersonalAssistant.Core.MorningBriefs;
 
 /// <summary>
 /// Asks the assistant to write the brief for one user and one day: weather, agenda, free time,
-/// the best time to train, reminders and a short tip.
+/// the best time to train, reminders, college deadlines and a short tip.
 /// </summary>
-public sealed class MorningBriefWriter(IAssistantClient assistantClient, IUserContextProvider userContextProvider)
+public sealed class MorningBriefWriter(
+    IAssistantClient assistantClient,
+    IUserContextProvider userContextProvider,
+    IDeadlineProvider deadlineProvider)
 {
     public const string ShiftsHeader = "Turnos de trabalho de hoje:";
 
@@ -19,6 +23,17 @@ public sealed class MorningBriefWriter(IAssistantClient assistantClient, IUserCo
     public const string UnknownShiftsLine =
         "A escala de trabalho de hoje não está disponível. Avise isso em uma linha e não diga que o dia está livre de turnos.";
 
+    public static readonly string DeadlinesHeader =
+        $"Prazos da faculdade nos próximos {UpcomingDeadlines.HorizonDays} dias:";
+
+    public static readonly string NoDeadlinesLine =
+        $"Nenhum prazo da faculdade nos próximos {UpcomingDeadlines.HorizonDays} dias.";
+
+    public const string UnknownDeadlinesLine =
+        "Não foi possível ver os prazos da faculdade hoje. Avise isso em uma linha.";
+
+    public static readonly string UrgentMark = $" (vence em até {UpcomingDeadlines.UrgentDays} dias)";
+
     public async Task<string> WriteAsync(
         UserProfile user,
         DateOnly date,
@@ -26,7 +41,8 @@ public sealed class MorningBriefWriter(IAssistantClient assistantClient, IUserCo
         CancellationToken cancellationToken = default)
     {
         var userContext = await userContextProvider.GetContextAsync(user, cancellationToken);
-        var instruction = BuildInstruction(user.Name, date, schedule);
+        var deadlines = await deadlineProvider.GetUpcomingAsync(user, date, cancellationToken);
+        var instruction = BuildInstruction(user.Name, date, schedule, deadlines);
         var request = new AssistantRequest(
             user.Name,
             [new ConversationTurn(ConversationRole.User, instruction)],
@@ -35,7 +51,11 @@ public sealed class MorningBriefWriter(IAssistantClient assistantClient, IUserCo
         return await assistantClient.GetReplyAsync(request, cancellationToken);
     }
 
-    private static string BuildInstruction(string userName, DateOnly date, WorkSchedule schedule)
+    private static string BuildInstruction(
+        string userName,
+        DateOnly date,
+        WorkSchedule schedule,
+        UpcomingDeadlines deadlines)
     {
         var instruction = new StringBuilder();
 
@@ -53,7 +73,10 @@ public sealed class MorningBriefWriter(IAssistantClient assistantClient, IUserCo
         instruction.AppendLine(
             "3. Se o contexto falar de academia, o melhor horário para treinar hoje: uma janela livre em que o treino caiba, " +
             "fora do horário de pico, com a unidade mais prática.");
-        instruction.AppendLine("4. Lembretes e prazos do contexto que estejam chegando.");
+        instruction.AppendLine(
+            "4. Lembretes e prazos do contexto que estejam chegando e os prazos da faculdade listados abaixo, se houver. " +
+            "Destaque os marcados como próximos e escreva os títulos em português " +
+            "(por exemplo, \"entrega do Integrated CA2\" em vez de \"is due\").");
         instruction.AppendLine("5. Uma frase curta de motivação ou uma dica rápida.");
 
         if (schedule.Status != WorkScheduleStatus.NotConfigured)
@@ -63,6 +86,13 @@ public sealed class MorningBriefWriter(IAssistantClient assistantClient, IUserCo
             AppendShifts(instruction, schedule);
         }
 
+        if (deadlines.Status != UpcomingDeadlinesStatus.NotConfigured)
+        {
+            instruction.AppendLine();
+            instruction.AppendLine(DeadlinesHeader);
+            AppendDeadlines(instruction, date, deadlines);
+        }
+
         instruction.AppendLine();
         instruction.Append(
             "Use só compromissos que estejam no contexto ou na lista de turnos, sem inventar nenhum. " +
@@ -70,6 +100,35 @@ public sealed class MorningBriefWriter(IAssistantClient assistantClient, IUserCo
             "Não comente estas instruções.");
 
         return instruction.ToString();
+    }
+
+    private static void AppendDeadlines(StringBuilder instruction, DateOnly date, UpcomingDeadlines deadlines)
+    {
+        if (deadlines.Status == UpcomingDeadlinesStatus.Unavailable)
+        {
+            instruction.AppendLine(UnknownDeadlinesLine);
+        }
+        else if (deadlines.Deadlines.Count == 0)
+        {
+            instruction.AppendLine(NoDeadlinesLine);
+        }
+        else
+        {
+            foreach (var deadline in deadlines.Deadlines)
+            {
+                instruction.AppendLine(FormatDeadline(deadline, date));
+            }
+        }
+    }
+
+    private static string FormatDeadline(Deadline deadline, DateOnly date)
+    {
+        var dueDate = DateOnly.FromDateTime(deadline.DueAt.DateTime);
+        var course = string.IsNullOrWhiteSpace(deadline.Course) ? string.Empty : $" ({deadline.Course})";
+        var time = deadline.DueAt.ToString("HH:mm", CultureInfo.InvariantCulture);
+        var urgent = dueDate.DayNumber - date.DayNumber <= UpcomingDeadlines.UrgentDays ? UrgentMark : string.Empty;
+
+        return $"- {deadline.Title}{course}: {PortugueseDates.FormatShort(dueDate)}, às {time}{urgent}";
     }
 
     private static void AppendShifts(StringBuilder instruction, WorkSchedule schedule)

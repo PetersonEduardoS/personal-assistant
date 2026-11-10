@@ -150,7 +150,11 @@ public static class CalendarFeedReader
             ? Unescape(summaryProperty.Value).Trim()
             : string.Empty;
 
-        calendarEvent = new CalendarEvent(summary, ParseDateTime(start), ParseDateTime(end));
+        var categories = properties.TryGetValue("CATEGORIES", out var categoriesProperty)
+            ? Unescape(categoriesProperty.Value).Trim()
+            : string.Empty;
+
+        calendarEvent = new CalendarEvent(summary, ParseDateTime(start), ParseDateTime(end), categories);
 
         return true;
     }
