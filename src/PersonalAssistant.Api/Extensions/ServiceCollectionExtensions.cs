@@ -64,7 +64,7 @@ public static class ServiceCollectionExtensions
 
         // Daily brief: the users' time zone and their work shifts
         services.AddSingleton(TimeZoneInfo.FindSystemTimeZoneById(UsersTimeZoneId));
-        services.AddMemoryCache();
+        services.AddSingleton<WorkScheduleCache>();
         services.AddHttpClient<CalendarFeedWorkScheduleProvider>(client =>
             client.Timeout = TimeSpan.FromSeconds(15))
             .RemoveAllLoggers(); // The calendar URL is a bearer secret, including its query string.

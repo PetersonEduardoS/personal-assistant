@@ -217,7 +217,8 @@ not keep affecting the next year's schedule. Add holiday exceptions by adjusting
 these ranges. Suggested gym sessions are not fixed appointments.
 
 Travel times are planning estimates, not live route or bus predictions. The work
-feed is cached for five minutes (one minute on failure). If unavailable, timing
+feed is read at most every 120 minutes, and waits 30 minutes after a failed read.
+When a read fails, the last good schedule of that day (up to 24 hours old) is used. If unavailable, timing
 uses known classes or the latest time; it cannot account for an unknown early shift.
 Keep personal routine files outside Git (`*.local.json` is ignored) and upload them
 with the private context files. The local Eduardo routine uses the ten LVA dates
