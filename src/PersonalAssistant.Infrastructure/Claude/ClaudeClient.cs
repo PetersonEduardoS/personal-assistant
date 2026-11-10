@@ -2,15 +2,22 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Globalization;
 using PersonalAssistant.Core.Assistant;
+using PersonalAssistant.Core.MorningBriefs;
 
 namespace PersonalAssistant.Infrastructure.Claude;
 
 /// <summary>
 /// Calls the Claude Messages API to get a reply for a conversation.
 /// When web search is enabled, Claude can search the web before answering.
+/// The current date and time in Dublin go in the system prompt, so words like "amanhã" or "sexta" make sense.
 /// </summary>
-public sealed class ClaudeClient(HttpClient httpClient, ClaudeOptions options) : IAssistantClient
+public sealed class ClaudeClient(
+    HttpClient httpClient,
+    ClaudeOptions options,
+    TimeProvider clock,
+    TimeZoneInfo timeZone) : IAssistantClient
 {
     private const string MessagesPath = "v1/messages";
     private const string TextBlockType = "text";
@@ -62,6 +69,7 @@ public sealed class ClaudeClient(HttpClient httpClient, ClaudeOptions options) :
     {
         var systemPrompt = new StringBuilder(options.SystemPrompt);
         systemPrompt.Append($"\n\nVocê está conversando com {request.UserName}.");
+        systemPrompt.Append($"\n\nAgora em Dublin: {FormatNow()}.");
 
         if (options.WebSearch.Enabled)
         {
@@ -76,6 +84,17 @@ public sealed class ClaudeClient(HttpClient httpClient, ClaudeOptions options) :
         }
 
         return systemPrompt.ToString();
+    }
+
+    /// <summary>
+    /// For example "terça-feira, 10 de novembro de 2026, 14:56".
+    /// </summary>
+    private string FormatNow()
+    {
+        var now = TimeZoneInfo.ConvertTime(clock.GetUtcNow(), timeZone);
+        var date = PortugueseDates.FormatLong(DateOnly.FromDateTime(now.DateTime));
+
+        return $"{date}, {now.ToString("HH:mm", CultureInfo.InvariantCulture)}";
     }
 
     private IReadOnlyList<WebSearchTool>? BuildTools()

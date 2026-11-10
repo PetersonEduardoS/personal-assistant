@@ -18,6 +18,11 @@ public class ClaudeClientTests
         }
         """;
 
+    // Tuesday, 10 November 2026, 14:56 in Dublin (winter time, same as UTC).
+    private static readonly DateTimeOffset Now = new(2026, 11, 10, 14, 56, 0, TimeSpan.Zero);
+
+    private static readonly TimeZoneInfo Dublin = TimeZoneInfo.FindSystemTimeZoneById("Europe/Dublin");
+
     private static readonly ClaudeOptions Options = new()
     {
         ApiKey = "test-api-key",
@@ -81,6 +86,30 @@ public class ClaudeClientTests
         var system = ParseBody(handler).GetProperty("system").GetString();
         Assert.StartsWith("Test system prompt", system);
         Assert.Contains("Eduardo", system);
+    }
+
+    [Fact]
+    public async Task GetReplyAsync_TellsTheAssistantTheCurrentDateAndTimeInDublin()
+    {
+        var (client, handler) = CreateClient(HttpStatusCode.OK, SuccessResponse);
+
+        await client.GetReplyAsync(Request("Oi"));
+
+        var system = ParseBody(handler).GetProperty("system").GetString();
+        Assert.Contains("terça-feira, 10 de novembro de 2026, 14:56", system);
+    }
+
+    [Fact]
+    public async Task GetReplyAsync_UsesDublinSummerTime_InTheSystemPrompt()
+    {
+        var handler = new FakeHttpMessageHandler(HttpStatusCode.OK, SuccessResponse);
+        var summer = new FixedTimeProvider(new DateTimeOffset(2026, 7, 6, 10, 30, 0, TimeSpan.Zero));
+        var client = new ClaudeClient(new HttpClient(handler), Options, summer, Dublin);
+
+        await client.GetReplyAsync(Request("Oi"));
+
+        var system = ParseBody(handler).GetProperty("system").GetString();
+        Assert.Contains("segunda-feira, 6 de julho de 2026, 11:30", system);
     }
 
     [Fact]
@@ -189,7 +218,7 @@ public class ClaudeClientTests
             }
         };
         var handler = new FakeHttpMessageHandler(HttpStatusCode.OK, SuccessResponse);
-        var client = new ClaudeClient(new HttpClient(handler), options);
+        var client = new ClaudeClient(new HttpClient(handler), options, new FixedTimeProvider(Now), Dublin);
 
         await client.GetReplyAsync(Request("Quantos graus faz hoje?"));
 
@@ -273,7 +302,7 @@ public class ClaudeClientTests
         string responseBody)
     {
         var handler = new FakeHttpMessageHandler(statusCode, responseBody);
-        var client = new ClaudeClient(new HttpClient(handler), Options);
+        var client = new ClaudeClient(new HttpClient(handler), Options, new FixedTimeProvider(Now), Dublin);
 
         return (client, handler);
     }
