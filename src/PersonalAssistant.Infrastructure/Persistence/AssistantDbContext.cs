@@ -8,6 +8,8 @@ public sealed class AssistantDbContext(DbContextOptions<AssistantDbContext> opti
 
     public DbSet<MorningBriefEntry> MorningBriefs => Set<MorningBriefEntry>();
 
+    public DbSet<AppointmentEntry> Appointments => Set<AppointmentEntry>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<ConversationMessage>(entity =>
@@ -22,6 +24,19 @@ public sealed class AssistantDbContext(DbContextOptions<AssistantDbContext> opti
 
             entity.HasIndex(message => message.WhatsAppMessageId).IsUnique();
             entity.HasIndex(message => new { message.PhoneNumber, message.Id });
+        });
+
+        modelBuilder.Entity<AppointmentEntry>(entity =>
+        {
+            entity.ToTable("Appointments");
+            entity.HasKey(appointment => appointment.Id);
+
+            entity.Property(appointment => appointment.PhoneNumber).HasMaxLength(32).IsRequired();
+            entity.Property(appointment => appointment.Title)
+                .HasMaxLength(PersonalAssistant.Core.Appointments.Appointment.MaxTitleLength)
+                .IsRequired();
+
+            entity.HasIndex(appointment => new { appointment.PhoneNumber, appointment.Date });
         });
 
         modelBuilder.Entity<MorningBriefEntry>(entity =>

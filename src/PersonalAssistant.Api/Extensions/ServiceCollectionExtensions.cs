@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using PersonalAssistant.Api.Database;
 using PersonalAssistant.Api.Workers;
+using PersonalAssistant.Core.Appointments;
 using PersonalAssistant.Core.Assistant;
 using PersonalAssistant.Core.Conversations;
 using PersonalAssistant.Core.Deadlines;
@@ -42,6 +43,7 @@ public static class ServiceCollectionExtensions
         services.AddHostedService<DatabaseMigrator>();
         services.AddScoped<IConversationStore, EfConversationStore>();
         services.AddScoped<IMorningBriefStore, EfMorningBriefStore>();
+        services.AddScoped<IAppointmentStore, EfAppointmentStore>();
         services.AddSingleton(TimeProvider.System);
 
         // Receiving messages
