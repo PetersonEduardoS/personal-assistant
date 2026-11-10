@@ -1,4 +1,4 @@
-namespace PersonalAssistant.Infrastructure.WorkSchedules;
+namespace PersonalAssistant.Infrastructure.Calendars;
 
 /// <summary>
 /// A timed event read from an iCalendar feed.

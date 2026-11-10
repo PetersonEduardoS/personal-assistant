@@ -10,6 +10,7 @@ using PersonalAssistant.Core.MorningBriefs;
 using PersonalAssistant.Core.Users;
 using PersonalAssistant.Core.WhatsApp;
 using PersonalAssistant.Core.WorkSchedules;
+using PersonalAssistant.Infrastructure.Calendars;
 using PersonalAssistant.Infrastructure.Claude;
 using PersonalAssistant.Infrastructure.Persistence;
 using PersonalAssistant.Infrastructure.Users;
@@ -64,11 +65,12 @@ public static class ServiceCollectionExtensions
 
         // Daily brief: the users' time zone and their work shifts
         services.AddSingleton(TimeZoneInfo.FindSystemTimeZoneById(UsersTimeZoneId));
-        services.AddSingleton<WorkScheduleCache>();
-        services.AddHttpClient<CalendarFeedWorkScheduleProvider>(client =>
+        services.AddSingleton<CalendarFeedCache>();
+        services.AddHttpClient<CalendarFeedClient>(client =>
             client.Timeout = TimeSpan.FromSeconds(15))
-            .RemoveAllLoggers(); // The calendar URL is a bearer secret, including its query string.
-        services.AddTransient<IWorkScheduleProvider, CachedWorkScheduleProvider>();
+            .RemoveAllLoggers(); // Calendar URLs are bearer secrets, including their query strings.
+        services.AddTransient<CachedCalendarFeed>();
+        services.AddTransient<IWorkScheduleProvider, CalendarFeedWorkScheduleProvider>();
         services.AddHttpClient<IAssistantClient, ClaudeClient>();
         services.AddHttpClient<IMessageSender, WhatsAppClient>();
         services.AddHostedService<IncomingMessageWorker>();

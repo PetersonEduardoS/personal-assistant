@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Text;
 
-namespace PersonalAssistant.Infrastructure.WorkSchedules;
+namespace PersonalAssistant.Infrastructure.Calendars;
 
 /// <summary>
 /// Reads the events of an iCalendar (.ics) feed. It supports what scheduling apps such as Findmyshift use:

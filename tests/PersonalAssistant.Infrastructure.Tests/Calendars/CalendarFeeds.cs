@@ -1,4 +1,4 @@
-namespace PersonalAssistant.Infrastructure.Tests.WorkSchedules;
+namespace PersonalAssistant.Infrastructure.Tests.Calendars;
 
 /// <summary>
 /// Builds small iCalendar feeds in the same format Findmyshift uses, with made-up shifts.

@@ -2,6 +2,8 @@ using System.Net;
 using Microsoft.Extensions.Logging.Abstractions;
 using PersonalAssistant.Core.Users;
 using PersonalAssistant.Core.WorkSchedules;
+using PersonalAssistant.Infrastructure.Calendars;
+using PersonalAssistant.Infrastructure.Tests.Calendars;
 using PersonalAssistant.Infrastructure.Tests.Claude;
 using PersonalAssistant.Infrastructure.WorkSchedules;
 
@@ -103,19 +105,14 @@ public class CalendarFeedWorkScheduleProviderTests
     }
 
     [Fact]
-    public async Task GetScheduleAsync_RequestsHttps_WhenUrlUsesWebcal()
+    public async Task GetScheduleAsync_ReadsTheFeedOnce_ForSeveralDays()
     {
         var (provider, handler) = CreateProvider(HttpStatusCode.OK, NovemberFeed);
-        var user = new UserProfile
-        {
-            PhoneNumber = "353800000001",
-            Name = "Eduardo",
-            ShiftsCalendarUrl = "webcal://example.com/ical.ics?key=secret"
-        };
 
-        await provider.GetScheduleAsync(user, new DateOnly(2026, 11, 6));
+        await provider.GetScheduleAsync(Eduardo, new DateOnly(2026, 11, 6));
+        await provider.GetScheduleAsync(Eduardo, new DateOnly(2026, 11, 7));
 
-        Assert.Equal(new Uri(FeedUrl), handler.LastRequestUri);
+        Assert.Single(handler.Requests);
     }
 
     [Fact]
@@ -133,10 +130,12 @@ public class CalendarFeedWorkScheduleProviderTests
         string responseBody)
     {
         var handler = new FakeHttpMessageHandler(statusCode, responseBody);
-        var provider = new CalendarFeedWorkScheduleProvider(
-            new HttpClient(handler),
-            Dublin,
-            NullLogger<CalendarFeedWorkScheduleProvider>.Instance);
+        var feed = new CachedCalendarFeed(
+            new CalendarFeedClient(new HttpClient(handler)),
+            new CalendarFeedCache(),
+            TimeProvider.System,
+            NullLogger<CachedCalendarFeed>.Instance);
+        var provider = new CalendarFeedWorkScheduleProvider(feed, Dublin);
 
         return (provider, handler);
     }

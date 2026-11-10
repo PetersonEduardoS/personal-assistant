@@ -1,6 +1,6 @@
-using PersonalAssistant.Infrastructure.WorkSchedules;
+using PersonalAssistant.Infrastructure.Calendars;
 
-namespace PersonalAssistant.Infrastructure.Tests.WorkSchedules;
+namespace PersonalAssistant.Infrastructure.Tests.Calendars;
 
 public class CalendarFeedReaderTests
 {
