@@ -1,3 +1,4 @@
+using PersonalAssistant.Core.Appointments;
 using PersonalAssistant.Core.Assistant;
 using PersonalAssistant.Core.MorningBriefs;
 using PersonalAssistant.Core.Messaging;
@@ -188,8 +189,28 @@ public class IncomingMessageProcessorTests
         Assert.Single(assistant.ReceivedRequests);
     }
 
-    private IncomingMessageProcessor CreateProcessor(IAssistantClient assistant, string? userContext = null) =>
-        new(assistant, _sender, Users, _store, new FakeUserContextProvider(userContext), new FixedTimeProvider(Now),
+    [Fact]
+    public async Task ProcessAsync_GivesTheAppointmentTools_ToTheAssistant()
+    {
+        var assistant = new FakeAssistantClient("Olá!");
+        var processor = CreateProcessor(assistant);
+
+        await processor.ProcessAsync(Message);
+
+        var request = Assert.Single(assistant.ReceivedRequests);
+        Assert.Equal(
+            new[] { "add_appointment", "list_appointments", "cancel_appointment" },
+            request.Tools!.Select(tool => tool.Name));
+    }
+
+    private IncomingMessageProcessor CreateProcessor(IAssistantClient assistant, string? userContext = null)
+    {
+        var dublin = TimeZoneInfo.FindSystemTimeZoneById("Europe/Dublin");
+        var clock = new FixedTimeProvider(Now);
+
+        return new(assistant, _sender, Users, _store, new FakeUserContextProvider(userContext), clock,
             new MorningBriefDelivery(_briefs, _sender, _store, new MorningBriefDeliveryGate()),
-            TimeZoneInfo.FindSystemTimeZoneById("Europe/Dublin"));
+            dublin,
+            new AppointmentToolFactory(new FakeAppointmentStore(), clock, dublin));
+    }
 }

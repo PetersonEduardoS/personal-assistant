@@ -1,3 +1,4 @@
+using PersonalAssistant.Core.Appointments;
 using PersonalAssistant.Core.Deadlines;
 using PersonalAssistant.Core.Assistant;
 using PersonalAssistant.Core.Conversations;
@@ -150,5 +151,68 @@ internal sealed class FakeDeadlineProvider(UpcomingDeadlines? deadlines = null) 
         RequestedDates.Add(fromDate);
 
         return Task.FromResult(deadlines ?? UpcomingDeadlines.NotConfigured);
+    }
+}
+
+/// <summary>
+/// Keeps appointments in a list, with the same rules as the real store.
+/// </summary>
+internal sealed class FakeAppointmentStore : IAppointmentStore
+{
+    private long _nextId = 1;
+
+    public List<(string PhoneNumber, Appointment Appointment)> Appointments { get; } = [];
+
+    public Task<Appointment> AddAsync(
+        string phoneNumber,
+        string title,
+        DateOnly date,
+        TimeOnly time,
+        CancellationToken cancellationToken = default)
+    {
+        var cleanTitle = title.Trim();
+
+        if (cleanTitle.Length == 0 || cleanTitle.Length > Appointment.MaxTitleLength)
+        {
+            throw new ArgumentException("Invalid title.", nameof(title));
+        }
+
+        var appointment = new Appointment(_nextId++, cleanTitle, date, time);
+        Appointments.Add((phoneNumber, appointment));
+
+        return Task.FromResult(appointment);
+    }
+
+    public Task<IReadOnlyList<Appointment>> ListAsync(
+        string phoneNumber,
+        DateOnly fromDate,
+        DateOnly toDate,
+        CancellationToken cancellationToken = default)
+    {
+        IReadOnlyList<Appointment> result = Appointments
+            .Where(entry => entry.PhoneNumber == phoneNumber
+                && entry.Appointment.Date >= fromDate
+                && entry.Appointment.Date <= toDate)
+            .Select(entry => entry.Appointment)
+            .OrderBy(appointment => appointment.Date)
+            .ThenBy(appointment => appointment.Time)
+            .ToList();
+
+        return Task.FromResult(result);
+    }
+
+    public Task<Appointment?> CancelAsync(string phoneNumber, long appointmentId, CancellationToken cancellationToken = default)
+    {
+        var index = Appointments.FindIndex(entry => entry.PhoneNumber == phoneNumber && entry.Appointment.Id == appointmentId);
+
+        if (index < 0)
+        {
+            return Task.FromResult<Appointment?>(null);
+        }
+
+        var appointment = Appointments[index].Appointment;
+        Appointments.RemoveAt(index);
+
+        return Task.FromResult<Appointment?>(appointment);
     }
 }

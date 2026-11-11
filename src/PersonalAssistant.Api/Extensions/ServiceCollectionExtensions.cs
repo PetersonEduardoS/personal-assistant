@@ -44,6 +44,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IConversationStore, EfConversationStore>();
         services.AddScoped<IMorningBriefStore, EfMorningBriefStore>();
         services.AddScoped<IAppointmentStore, EfAppointmentStore>();
+        services.AddTransient<AppointmentToolFactory>();
         services.AddSingleton(TimeProvider.System);
 
         // Receiving messages
