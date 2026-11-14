@@ -88,6 +88,44 @@ public sealed class EfAppointmentStore(AssistantDbContext context, TimeProvider 
         return ToAppointment(entry);
     }
 
+    public async Task<IReadOnlyList<PendingReminder>> ListPendingRemindersAsync(
+        DateOnly fromDate,
+        DateOnly toDate,
+        CancellationToken cancellationToken = default)
+    {
+        var entries = await context.Appointments
+            .AsNoTracking()
+            .Where(entry => entry.ReminderMinutesBefore != null
+                && entry.ReminderSentAtUtc == null
+                && entry.Date >= fromDate
+                && entry.Date <= toDate)
+            .OrderBy(entry => entry.Date)
+            .ThenBy(entry => entry.Time)
+            .ThenBy(entry => entry.Id)
+            .ToListAsync(cancellationToken);
+
+        return entries
+            .Select(entry => new PendingReminder(
+                entry.PhoneNumber,
+                ToAppointment(entry),
+                UtcDateTimes.ToOffset(entry.CreatedAtUtc)))
+            .ToList();
+    }
+
+    public async Task<bool> TryMarkReminderSentAsync(long appointmentId, CancellationToken cancellationToken = default)
+    {
+        DateTime? sentAtUtc = timeProvider.GetUtcNow().UtcDateTime;
+
+        // A single UPDATE that only changes an unsent reminder, so only one caller can win.
+        var updatedRows = await context.Appointments
+            .Where(entry => entry.Id == appointmentId && entry.ReminderSentAtUtc == null)
+            .ExecuteUpdateAsync(
+                setters => setters.SetProperty(entry => entry.ReminderSentAtUtc, sentAtUtc),
+                cancellationToken);
+
+        return updatedRows == 1;
+    }
+
     private static Appointment ToAppointment(AppointmentEntry entry) =>
         new(entry.Id, entry.Title, entry.Date, entry.Time, entry.ReminderMinutesBefore);
 }

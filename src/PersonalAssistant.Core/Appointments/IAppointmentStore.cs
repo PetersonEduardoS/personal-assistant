@@ -32,4 +32,19 @@ public interface IAppointmentStore
     /// Removes the appointment and returns it, or returns null when it does not exist or belongs to someone else.
     /// </summary>
     Task<Appointment?> CancelAsync(string phoneNumber, long appointmentId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns, for every user, the appointments from <paramref name="fromDate"/> to <paramref name="toDate"/>
+    /// that have a reminder not sent yet.
+    /// </summary>
+    Task<IReadOnlyList<PendingReminder>> ListPendingRemindersAsync(
+        DateOnly fromDate,
+        DateOnly toDate,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Claims the reminder before it is sent. Returns false when it was already claimed or the appointment is gone,
+    /// so a reminder is never sent twice.
+    /// </summary>
+    Task<bool> TryMarkReminderSentAsync(long appointmentId, CancellationToken cancellationToken = default);
 }

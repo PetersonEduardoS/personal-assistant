@@ -161,8 +161,33 @@ internal sealed class FakeDeadlineProvider(UpcomingDeadlines? deadlines = null) 
 internal sealed class FakeAppointmentStore : IAppointmentStore
 {
     private long _nextId = 1;
+    private readonly Dictionary<long, DateTimeOffset> _createdAt = [];
 
     public List<(string PhoneNumber, Appointment Appointment)> Appointments { get; } = [];
+
+    /// <summary>The creation time given to the next appointments added.</summary>
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.MinValue;
+
+    public HashSet<long> SentReminders { get; } = [];
+
+    public Task<IReadOnlyList<PendingReminder>> ListPendingRemindersAsync(
+        DateOnly fromDate,
+        DateOnly toDate,
+        CancellationToken cancellationToken = default)
+    {
+        IReadOnlyList<PendingReminder> result = Appointments
+            .Where(entry => entry.Appointment.ReminderMinutesBefore is not null
+                && !SentReminders.Contains(entry.Appointment.Id)
+                && entry.Appointment.Date >= fromDate
+                && entry.Appointment.Date <= toDate)
+            .Select(entry => new PendingReminder(entry.PhoneNumber, entry.Appointment, _createdAt[entry.Appointment.Id]))
+            .ToList();
+
+        return Task.FromResult(result);
+    }
+
+    public Task<bool> TryMarkReminderSentAsync(long appointmentId, CancellationToken cancellationToken = default) =>
+        Task.FromResult(Appointments.Any(entry => entry.Appointment.Id == appointmentId) && SentReminders.Add(appointmentId));
 
     public Task<Appointment> AddAsync(
         string phoneNumber,
@@ -181,6 +206,7 @@ internal sealed class FakeAppointmentStore : IAppointmentStore
 
         var appointment = new Appointment(_nextId++, cleanTitle, date, time, reminderMinutesBefore);
         Appointments.Add((phoneNumber, appointment));
+        _createdAt[appointment.Id] = CreatedAt;
 
         return Task.FromResult(appointment);
     }

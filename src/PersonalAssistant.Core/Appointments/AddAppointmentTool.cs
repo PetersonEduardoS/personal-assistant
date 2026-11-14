@@ -59,7 +59,7 @@ internal sealed class AddAppointmentTool(
                 phoneNumber, title, date, time, reminderMinutesBefore, cancellationToken);
 
             return $"Salvo: {AppointmentText.Describe(appointment)} " +
-                $"({DescribeReminder(appointment.ReminderMinutesBefore)}) (id {appointment.Id}).";
+                $"({ReminderText.DescribeSetting(appointment.ReminderMinutesBefore)}) (id {appointment.Id}).";
         }
         catch (ArgumentException)
         {
@@ -85,29 +85,5 @@ internal sealed class AddAppointmentTool(
         }
 
         return minutes == 0 ? null : minutes;
-    }
-
-    internal static string DescribeReminder(int? minutesBefore)
-    {
-        if (minutesBefore is null)
-        {
-            return "sem lembrete";
-        }
-
-        var hours = minutesBefore.Value / 60;
-        var minutes = minutesBefore.Value % 60;
-        var parts = new List<string>();
-
-        if (hours > 0)
-        {
-            parts.Add(hours == 1 ? "1 hora" : $"{hours} horas");
-        }
-
-        if (minutes > 0)
-        {
-            parts.Add(minutes == 1 ? "1 minuto" : $"{minutes} minutos");
-        }
-
-        return $"lembrete {string.Join(" e ", parts)} antes";
     }
 }

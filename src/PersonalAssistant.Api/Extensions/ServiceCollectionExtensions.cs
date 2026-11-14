@@ -65,6 +65,7 @@ public static class ServiceCollectionExtensions
         services.AddTransient<IncomingMessageProcessor>();
         services.AddTransient<MorningBriefWriter>();
         services.AddTransient<MorningBriefScheduler>();
+        services.AddTransient<AppointmentReminderService>();
         services.AddSingleton<MorningBriefDeliveryGate>();
         services.AddTransient<MorningBriefDelivery>();
 
@@ -81,6 +82,7 @@ public static class ServiceCollectionExtensions
         services.AddHttpClient<IMessageSender, WhatsAppClient>();
         services.AddHostedService<IncomingMessageWorker>();
         services.AddHostedService<MorningBriefWorker>();
+        services.AddHostedService<AppointmentReminderWorker>();
 
         return services;
     }

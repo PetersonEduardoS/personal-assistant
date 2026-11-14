@@ -54,6 +54,46 @@ public sealed class EfAppointmentStoreTests : IDisposable
     }
 
     [Fact]
+    public async Task ListPendingRemindersAsync_ReturnsUnsentReminders_OfEveryUser_InTheRange()
+    {
+        await using var context = _database.CreateContext();
+        var store = CreateStore(context);
+        var haircut = await store.AddAsync(Eduardo, "Corte de cabelo", Friday, new TimeOnly(13, 30));
+        var nails = await store.AddAsync(Karina, "Unhas", Friday.AddDays(1), new TimeOnly(10, 0), 120);
+        await store.AddAsync(Eduardo, "Sem lembrete", Friday, new TimeOnly(15, 0), null);
+        await store.AddAsync(Eduardo, "Fora do intervalo", Friday.AddDays(2), new TimeOnly(9, 0));
+
+        var pending = await store.ListPendingRemindersAsync(Friday, Friday.AddDays(1));
+
+        Assert.Equal(new[] { haircut.Id, nails.Id }, pending.Select(reminder => reminder.Appointment.Id).Order().ToArray());
+        var first = pending.Single(reminder => reminder.Appointment.Id == haircut.Id);
+        Assert.Equal(Eduardo, first.PhoneNumber);
+        Assert.Equal(_clock.GetUtcNow(), first.CreatedAt);
+        Assert.Equal(Karina, pending.Single(reminder => reminder.Appointment.Id == nails.Id).PhoneNumber);
+    }
+
+    [Fact]
+    public async Task TryMarkReminderSentAsync_WinsOnlyOnce_AndHidesTheReminder()
+    {
+        await using var context = _database.CreateContext();
+        var store = CreateStore(context);
+        var added = await store.AddAsync(Eduardo, "Corte de cabelo", Friday, new TimeOnly(13, 30));
+
+        Assert.True(await store.TryMarkReminderSentAsync(added.Id));
+        Assert.False(await store.TryMarkReminderSentAsync(added.Id));
+        Assert.Empty(await store.ListPendingRemindersAsync(Friday, Friday));
+        Assert.Single(await store.ListAsync(Eduardo, Friday, Friday));
+    }
+
+    [Fact]
+    public async Task TryMarkReminderSentAsync_ReturnsFalse_ForAnUnknownAppointment()
+    {
+        await using var context = _database.CreateContext();
+
+        Assert.False(await CreateStore(context).TryMarkReminderSentAsync(999));
+    }
+
+    [Fact]
     public async Task AddAsync_TrimsTheTitle()
     {
         await using var context = _database.CreateContext();
