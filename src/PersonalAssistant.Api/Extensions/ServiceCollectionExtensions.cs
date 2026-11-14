@@ -49,7 +49,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IAppointmentStore, EfAppointmentStore>();
         services.AddScoped<INoteStore, EfNoteStore>();
         services.AddTransient<AssistantToolFactory>();
-        services.AddSingleton<IEmailInbox, DisabledEmailInbox>();
+        services.AddSingleton<IEmailInbox, ImapEmailInbox>();
         services.AddSingleton(TimeProvider.System);
 
         // Receiving messages
