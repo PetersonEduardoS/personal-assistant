@@ -1,3 +1,4 @@
+using PersonalAssistant.Core.Appointments;
 using PersonalAssistant.Core.Assistant;
 using PersonalAssistant.Core.Deadlines;
 using PersonalAssistant.Core.MorningBriefs;
@@ -207,12 +208,48 @@ public class MorningBriefWriterTests
         Assert.DoesNotContain(MorningBriefWriter.DeadlinesHeader, SingleInstruction(assistant));
     }
 
+    [Fact]
+    public async Task WriteAsync_ListsTheSavedAppointmentsOfTheDay_InTimeOrder()
+    {
+        var assistant = new FakeAssistantClient("Bom dia!");
+        var appointments = new FakeAppointmentStore();
+        await appointments.AddAsync(Eduardo.PhoneNumber, "Café com o Marivaldo", Friday, new TimeOnly(12, 0));
+        await appointments.AddAsync(Eduardo.PhoneNumber, "Corte de cabelo do Rick", Friday, new TimeOnly(10, 0));
+        await appointments.AddAsync(Eduardo.PhoneNumber, "Dentista", Friday.AddDays(1), new TimeOnly(9, 0));
+        var writer = CreateWriter(assistant, appointments: appointments);
+
+        await writer.WriteAsync(Eduardo, Friday, WorkSchedule.NotConfigured);
+
+        var instruction = SingleInstruction(assistant);
+        var expected = MorningBriefWriter.AppointmentsHeader + Environment.NewLine +
+            "- 10:00: Corte de cabelo do Rick" + Environment.NewLine +
+            "- 12:00: Café com o Marivaldo" + Environment.NewLine;
+        Assert.Contains(expected, instruction);
+        Assert.DoesNotContain("Dentista", instruction);
+    }
+
+    [Fact]
+    public async Task WriteAsync_LeavesAppointmentsOut_WhenThereAreNone()
+    {
+        var assistant = new FakeAssistantClient("Bom dia!");
+        var writer = CreateWriter(assistant);
+
+        await writer.WriteAsync(Eduardo, Friday, WorkSchedule.NotConfigured);
+
+        Assert.DoesNotContain(MorningBriefWriter.AppointmentsHeader, SingleInstruction(assistant));
+    }
+
     private static DateTimeOffset DublinTime(int year, int month, int day, int hour, int minute) =>
         new(year, month, day, hour, minute, 0, TimeSpan.Zero);
 
     private static MorningBriefWriter CreateWriter(
         IAssistantClient assistant,
         string? userContext = null,
-        FakeDeadlineProvider? deadlines = null) =>
-        new(assistant, new FakeUserContextProvider(userContext), deadlines ?? new FakeDeadlineProvider());
+        FakeDeadlineProvider? deadlines = null,
+        FakeAppointmentStore? appointments = null) =>
+        new(
+            assistant,
+            new FakeUserContextProvider(userContext),
+            deadlines ?? new FakeDeadlineProvider(),
+            appointments ?? new FakeAppointmentStore());
 }

@@ -189,6 +189,7 @@ an error instead of silently switching to a different time.
 {
   "PreparationMinutes": 30,
   "WorkTravelMinutes": 25,
+  "AppointmentTravelMinutes": 25,
   "LatestTime": "09:00:00",
   "Appointments": [
     {
@@ -217,6 +218,8 @@ days use 09:00. Early shifts clamp at midnight instead of wrapping into the even
 Weekly appointments require an explicit date range, so a finished semester does
 not keep affecting the next year's schedule. Add holiday exceptions by adjusting
 these ranges. Suggested gym sessions are not fixed appointments.
+Appointments saved from the chat also count, using `AppointmentTravelMinutes`
+(25 by default) because their place is not known.
 
 Travel times are planning estimates, not live route or bus predictions. The work
 feed is read at most every 120 minutes, and waits 30 minutes after a failed read.

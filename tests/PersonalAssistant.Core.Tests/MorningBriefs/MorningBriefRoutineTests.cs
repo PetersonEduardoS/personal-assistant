@@ -1,3 +1,4 @@
+using PersonalAssistant.Core.Appointments;
 using PersonalAssistant.Core.MorningBriefs;
 using PersonalAssistant.Core.WorkSchedules;
 
@@ -52,6 +53,37 @@ public class MorningBriefRoutineTests
     public void GetTime_UnavailableScheduleStillUsesKnownClasses()
     {
         Assert.Equal(new TimeOnly(7, 35), Routine().GetTime(new(2026, 11, 5), WorkSchedule.Unavailable));
+    }
+
+    [Theory]
+    [InlineData("08:30", "07:35")]
+    [InlineData("15:00", "09:00")]
+    [InlineData("07:00", "06:05")]
+    public void GetTime_ChatAppointmentsCompeteForEarliestTime(string appointmentTime, string expected)
+    {
+        // Saturday 14 November: no class and no shift.
+        var saturday = new DateOnly(2026, 11, 14);
+        Appointment[] saved = [new(1, "Café", saturday, TimeOnly.Parse(appointmentTime))];
+
+        Assert.Equal(TimeOnly.Parse(expected), Routine().GetTime(saturday, WorkSchedule.NotConfigured, saved));
+    }
+
+    [Fact]
+    public void GetTime_UsesTheConfiguredTravelTime_ForChatAppointments()
+    {
+        var saturday = new DateOnly(2026, 11, 14);
+        var routine = Routine();
+        routine.AppointmentTravelMinutes = 10;
+        Appointment[] saved = [new(1, "Café", saturday, new TimeOnly(8, 30))];
+
+        Assert.Equal(new TimeOnly(7, 50), routine.GetTime(saturday, WorkSchedule.NotConfigured, saved));
+    }
+
+    [Fact]
+    public void Validate_RejectsNegativeAppointmentTravelTime()
+    {
+        var routine = new MorningBriefRoutine { AppointmentTravelMinutes = -1 };
+        Assert.Throws<InvalidOperationException>(routine.Validate);
     }
 
     [Fact]

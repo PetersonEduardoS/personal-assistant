@@ -1,3 +1,4 @@
+using PersonalAssistant.Core.Appointments;
 using PersonalAssistant.Core.Conversations;
 using PersonalAssistant.Core.Messaging;
 using PersonalAssistant.Core.MorningBriefs;
@@ -130,6 +131,21 @@ public class MorningBriefSchedulerTests
             await fixture.CreateScheduler().RunAsync(fixture.User));
     }
 
+    [Theory]
+    [InlineData("2026-11-14T07:34:00Z", false)]
+    [InlineData("2026-11-14T07:35:00Z", true)]
+    public async Task RunAsync_SavedAppointmentMakesTheBriefEarlier(string timestamp, bool due)
+    {
+        // Saturday 14 November: no class, no shift and a coffee saved from the chat at 08:30.
+        var fixture = new Fixture(DateTimeOffset.Parse(timestamp));
+        fixture.User.MorningBriefTime = null;
+        fixture.Routine = new();
+        await fixture.Appointments.AddAsync(fixture.User.PhoneNumber, "Café", new(2026, 11, 14), new(8, 30));
+
+        Assert.Equal(due ? MorningBriefResult.TemplateSent : MorningBriefResult.NotDue,
+            await fixture.CreateScheduler().RunAsync(fixture.User));
+    }
+
     [Fact]
     public async Task RunNowAsync_BypassesTimeButRemainsOncePerDay()
     {
@@ -157,6 +173,7 @@ public class MorningBriefSchedulerTests
         public Store Store { get; } = new();
         public Sender Sender { get; } = new();
         public MorningBriefRoutine? Routine { get; set; }
+        public FakeAppointmentStore Appointments { get; } = new();
         public MorningBriefScheduler Scheduler { get; }
         public Fixture(DateTimeOffset? now = null, FakeAssistantClient? assistant = null)
         {
@@ -165,9 +182,9 @@ public class MorningBriefSchedulerTests
             Scheduler = CreateScheduler();
         }
         public MorningBriefScheduler CreateScheduler() => new(
-            new MorningBriefWriter(Assistant, new FakeUserContextProvider(), new FakeDeadlineProvider()), new Schedules(), Store,
+            new MorningBriefWriter(Assistant, new FakeUserContextProvider(), new FakeDeadlineProvider(), Appointments), new Schedules(), Store,
             Conversations, Sender, new FixedTimeProvider(Now), TimeZoneInfo.FindSystemTimeZoneById("Europe/Dublin"), new Routines(Routine),
-            new MorningBriefDelivery(Store, Sender, Conversations, new MorningBriefDeliveryGate()));
+            new MorningBriefDelivery(Store, Sender, Conversations, new MorningBriefDeliveryGate()), Appointments);
     }
 
     private sealed class Schedules : IWorkScheduleProvider

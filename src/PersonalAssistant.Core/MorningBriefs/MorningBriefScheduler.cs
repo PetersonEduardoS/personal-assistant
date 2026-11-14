@@ -1,3 +1,4 @@
+using PersonalAssistant.Core.Appointments;
 using PersonalAssistant.Core.Conversations;
 using PersonalAssistant.Core.Messaging;
 using PersonalAssistant.Core.Users;
@@ -21,7 +22,8 @@ public sealed class MorningBriefScheduler(
     TimeProvider clock,
     TimeZoneInfo timeZone,
     IMorningBriefRoutineProvider routines,
-    MorningBriefDelivery delivery)
+    MorningBriefDelivery delivery,
+    IAppointmentStore appointments)
 {
     public const string TemplateName = "morning_brief_ready";
     public const string TemplateLanguage = "pt_BR";
@@ -46,7 +48,8 @@ public sealed class MorningBriefScheduler(
             var localTime = TimeZoneInfo.ConvertTime(clock.GetUtcNow(), timeZone).TimeOfDay;
             if (localTime >= latestEnd) return MorningBriefResult.NotDue;
             schedule = await schedules.GetScheduleAsync(user, date, cancellationToken);
-            scheduled = routine.GetTime(date, schedule);
+            var savedAppointments = await appointments.ListAsync(user.PhoneNumber, date, date, cancellationToken);
+            scheduled = routine.GetTime(date, schedule, savedAppointments);
         }
         if (!manual && !IsDue(scheduled, clock.GetUtcNow())) return MorningBriefResult.NotDue;
 

@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using PersonalAssistant.Core.Appointments;
 using PersonalAssistant.Core.Assistant;
 using PersonalAssistant.Core.Deadlines;
 using PersonalAssistant.Core.Users;
@@ -9,13 +10,16 @@ namespace PersonalAssistant.Core.MorningBriefs;
 
 /// <summary>
 /// Asks the assistant to write the brief for one user and one day: weather, agenda, free time,
-/// the best time to train, reminders, college deadlines and a short tip.
+/// appointments saved from the chat, the best time to train, reminders, college deadlines and a short tip.
 /// </summary>
 public sealed class MorningBriefWriter(
     IAssistantClient assistantClient,
     IUserContextProvider userContextProvider,
-    IDeadlineProvider deadlineProvider)
+    IDeadlineProvider deadlineProvider,
+    IAppointmentStore appointmentStore)
 {
+    public const string AppointmentsHeader = "Compromissos anotados para hoje:";
+
     public const string ShiftsHeader = "Turnos de trabalho de hoje:";
 
     public const string NoShiftsLine = "Nenhum turno de trabalho hoje.";
@@ -42,7 +46,8 @@ public sealed class MorningBriefWriter(
     {
         var userContext = await userContextProvider.GetContextAsync(user, cancellationToken);
         var deadlines = await deadlineProvider.GetUpcomingAsync(user, date, cancellationToken);
-        var instruction = BuildInstruction(user.Name, date, schedule, deadlines);
+        var appointments = await appointmentStore.ListAsync(user.PhoneNumber, date, date, cancellationToken);
+        var instruction = BuildInstruction(user.Name, date, schedule, deadlines, appointments);
         var request = new AssistantRequest(
             user.Name,
             [new ConversationTurn(ConversationRole.User, instruction)],
@@ -55,7 +60,8 @@ public sealed class MorningBriefWriter(
         string userName,
         DateOnly date,
         WorkSchedule schedule,
-        UpcomingDeadlines deadlines)
+        UpcomingDeadlines deadlines,
+        IReadOnlyList<Appointment> appointments)
     {
         var instruction = new StringBuilder();
 
@@ -69,7 +75,9 @@ public sealed class MorningBriefWriter(
             "Pesquise a previsão e dê uma dica prática, como levar casaco ou guarda-chuva.");
         instruction.AppendLine(
             "2. A agenda de hoje em ordem de horário: os compromissos do contexto que caem neste dia da semana " +
-            "ou nesta data e os turnos de trabalho listados abaixo, se houver. Depois, as janelas livres do dia.");
+            "ou nesta data, os compromissos anotados e os turnos de trabalho listados abaixo, se houver. " +
+            "Avise se dois compromissos se sobrepuserem ou não deixarem tempo para o deslocamento. " +
+            "Depois, as janelas livres do dia.");
         instruction.AppendLine(
             "3. Se o contexto falar de academia, o melhor horário para treinar hoje: uma janela livre em que o treino caiba, " +
             "fora do horário de pico, com a unidade mais prática.");
@@ -78,6 +86,18 @@ public sealed class MorningBriefWriter(
             "Destaque os marcados como próximos e escreva os títulos em português " +
             "(por exemplo, \"entrega do Integrated CA2\" em vez de \"is due\").");
         instruction.AppendLine("5. Uma frase curta de motivação ou uma dica rápida.");
+
+        if (appointments.Count > 0)
+        {
+            instruction.AppendLine();
+            instruction.AppendLine(AppointmentsHeader);
+
+            foreach (var appointment in appointments)
+            {
+                instruction.AppendLine(
+                    $"- {appointment.Time.ToString("HH:mm", CultureInfo.InvariantCulture)}: {appointment.Title}");
+            }
+        }
 
         if (schedule.Status != WorkScheduleStatus.NotConfigured)
         {
@@ -95,7 +115,7 @@ public sealed class MorningBriefWriter(
 
         instruction.AppendLine();
         instruction.Append(
-            "Use só compromissos que estejam no contexto ou na lista de turnos, sem inventar nenhum. " +
+            "Use só compromissos que estejam no contexto ou nas listas acima, sem inventar nenhum. " +
             "Seja curto e use o formato do WhatsApp: *asteriscos* para destacar e • para listas. " +
             "Não comente estas instruções.");
 
