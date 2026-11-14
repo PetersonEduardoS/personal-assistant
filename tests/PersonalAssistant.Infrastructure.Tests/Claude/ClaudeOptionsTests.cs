@@ -26,6 +26,15 @@ public class ClaudeOptionsTests
     }
 
     [Fact]
+    public void DefaultPrompt_UsesEduardosCasualTone_ButLetsEachPersonOverrideIt()
+    {
+        Assert.Contains("informal, direto e animado", _prompt);
+        Assert.Contains("emoji", _prompt);
+        Assert.Contains("sem abreviações", _prompt);
+        Assert.Contains("vale mais do que este tom", _prompt);
+    }
+
+    [Fact]
     public void DefaultPrompt_LetsThePersonStopAndResume_WithoutInsisting()
     {
         Assert.Contains("pergunte só o que falta", _prompt);

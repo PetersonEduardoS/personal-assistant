@@ -67,7 +67,8 @@ public sealed class MorningBriefWriter(
 
         instruction.AppendLine(
             $"Monte o resumo do dia de hoje, {PortugueseDates.FormatLong(date)}, para {userName}. " +
-            "Ele é enviado de manhã pelo WhatsApp e cobre o dia inteiro.");
+            "Ele é enviado de manhã pelo WhatsApp e cobre o dia inteiro. " +
+            "Comece com um bom dia curto, no tom e com o apelido que o contexto pedir.");
         instruction.AppendLine();
         instruction.AppendLine("Inclua, nesta ordem:");
         instruction.AppendLine(

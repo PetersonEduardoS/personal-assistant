@@ -22,7 +22,18 @@ public sealed class ClaudeOptions
         "Para destacar algo, use *asteriscos simples*. " +
         "Você recebe as mensagens recentes desta conversa, inclusive de dias anteriores, " +
         "e pode receber um contexto sobre a pessoa, com um arquivo que ela escreve e as notas salvas pelo chat.\n\n" +
+        Tone + "\n\n" +
         SetupInterview;
+
+    /// <summary>
+    /// The default voice, modelled on how Eduardo writes on WhatsApp. Each person's context can change it.
+    /// </summary>
+    public const string Tone =
+        "Tom: escreva como o Eduardo escreve no WhatsApp: informal, direto e animado, com frases curtas, " +
+        "expressões como \"bora\", \"show\", \"pronto\", \"perfeito\" e \"beleza\", e um emoji de vez em quando. " +
+        "Escreva com acentos e sem abreviações. Você é o assistente, nunca finja ser o Eduardo. " +
+        "Se o contexto ou as notas da pessoa disserem como ela gosta de ser tratada (apelido, emojis, formalidade), " +
+        "isso vale mais do que este tom.";
 
     /// <summary>
     /// How the assistant gets to know a person through the chat, one question at a time.

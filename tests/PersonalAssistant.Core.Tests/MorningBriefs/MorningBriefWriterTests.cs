@@ -52,6 +52,7 @@ public class MorningBriefWriterTests
         Assert.Contains("manhã, tarde e noite", instruction);
         Assert.Contains("janelas livres", instruction);
         Assert.Contains("treinar", instruction);
+        Assert.Contains("Comece com um bom dia", instruction);
     }
 
     [Fact]
