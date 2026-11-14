@@ -34,6 +34,12 @@ namespace PersonalAssistant.Infrastructure.Persistence.Migrations
                         .HasMaxLength(32)
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("ReminderMinutesBefore")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("ReminderSentAtUtc")
+                        .HasColumnType("TEXT");
+
                     b.Property<TimeOnly>("Time")
                         .HasColumnType("TEXT");
 

@@ -6,13 +6,16 @@ namespace PersonalAssistant.Core.Appointments;
 public interface IAppointmentStore
 {
     /// <summary>
-    /// Saves an appointment. The title is trimmed; an empty or too long title throws <see cref="ArgumentException"/>.
+    /// Saves an appointment. The title is trimmed; an empty or too long title, or a reminder outside
+    /// 1 to <see cref="Appointment.MaxReminderMinutes"/> minutes, throws <see cref="ArgumentException"/>.
+    /// A null reminder means no reminder.
     /// </summary>
     Task<Appointment> AddAsync(
         string phoneNumber,
         string title,
         DateOnly date,
         TimeOnly time,
+        int? reminderMinutesBefore = Appointment.DefaultReminderMinutes,
         CancellationToken cancellationToken = default);
 
     /// <summary>

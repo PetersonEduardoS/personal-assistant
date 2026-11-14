@@ -15,5 +15,11 @@ public sealed class AppointmentEntry
 
     public TimeOnly Time { get; set; }
 
+    /// <summary>Minutes before the appointment to send the reminder, or null for no reminder.</summary>
+    public int? ReminderMinutesBefore { get; set; }
+
+    /// <summary>When the reminder went out, so it is never sent twice.</summary>
+    public DateTime? ReminderSentAtUtc { get; set; }
+
     public DateTime CreatedAtUtc { get; set; }
 }

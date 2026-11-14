@@ -29,6 +29,31 @@ public sealed class EfAppointmentStoreTests : IDisposable
     }
 
     [Fact]
+    public async Task AddAsync_StoresAOneHourReminder_ByDefault()
+    {
+        await using var context = _database.CreateContext();
+        var store = CreateStore(context);
+
+        var added = await store.AddAsync(Eduardo, "Corte de cabelo", Friday, new TimeOnly(13, 30));
+
+        Assert.Equal(60, added.ReminderMinutesBefore);
+        Assert.Equal(60, Assert.Single(await store.ListAsync(Eduardo, Friday, Friday)).ReminderMinutesBefore);
+    }
+
+    [Theory]
+    [InlineData(120)]
+    [InlineData(null)]
+    public async Task AddAsync_StoresTheChosenReminder(int? minutesBefore)
+    {
+        await using var context = _database.CreateContext();
+        var store = CreateStore(context);
+
+        await store.AddAsync(Eduardo, "Dentista", Friday, new TimeOnly(9, 0), minutesBefore);
+
+        Assert.Equal(minutesBefore, Assert.Single(await store.ListAsync(Eduardo, Friday, Friday)).ReminderMinutesBefore);
+    }
+
+    [Fact]
     public async Task AddAsync_TrimsTheTitle()
     {
         await using var context = _database.CreateContext();

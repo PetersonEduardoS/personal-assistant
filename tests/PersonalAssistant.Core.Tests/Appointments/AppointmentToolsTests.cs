@@ -55,6 +55,39 @@ public class AppointmentToolsTests
     }
 
     [Fact]
+    public async Task Add_SetsAOneHourReminder_ByDefault_AndSaysSo()
+    {
+        var result = await Run(Eduardo, "add_appointment",
+            """{ "title": "Corte de cabelo", "date": "2026-11-13", "time": "13:30" }""");
+
+        Assert.Contains("lembrete 1 hora antes", result);
+        Assert.Equal(60, Assert.Single(_store.Appointments).Appointment.ReminderMinutesBefore);
+    }
+
+    [Theory]
+    [InlineData(120, "lembrete 2 horas antes", 120)]
+    [InlineData(30, "lembrete 30 minutos antes", 30)]
+    [InlineData(90, "lembrete 1 hora e 30 minutos antes", 90)]
+    [InlineData(0, "sem lembrete", null)]
+    public async Task Add_UsesTheChosenReminder(int minutesBefore, string expectedText, int? expectedStored)
+    {
+        var result = await Run(Eduardo, "add_appointment",
+            $$"""{ "title": "Dentista", "date": "2026-11-13", "time": "09:00", "remind_minutes_before": {{minutesBefore}} }""");
+
+        Assert.Contains(expectedText, result);
+        Assert.Equal(expectedStored, Assert.Single(_store.Appointments).Appointment.ReminderMinutesBefore);
+    }
+
+    [Theory]
+    [InlineData(-5)]
+    [InlineData(1441)]
+    public async Task Add_RejectsAReminderOutOfRange(int minutesBefore)
+    {
+        await Assert.ThrowsAsync<AssistantToolException>(() => Run(Eduardo, "add_appointment",
+            $$"""{ "title": "Dentista", "date": "2026-11-13", "time": "09:00", "remind_minutes_before": {{minutesBefore}} }"""));
+    }
+
+    [Fact]
     public async Task Add_RejectsADateAndTimeInThePast()
     {
         var exception = await Assert.ThrowsAsync<AssistantToolException>(() => Run(Eduardo, "add_appointment",

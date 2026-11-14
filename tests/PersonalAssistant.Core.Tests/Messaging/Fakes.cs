@@ -169,6 +169,7 @@ internal sealed class FakeAppointmentStore : IAppointmentStore
         string title,
         DateOnly date,
         TimeOnly time,
+        int? reminderMinutesBefore = Appointment.DefaultReminderMinutes,
         CancellationToken cancellationToken = default)
     {
         var cleanTitle = title.Trim();
@@ -178,7 +179,7 @@ internal sealed class FakeAppointmentStore : IAppointmentStore
             throw new ArgumentException("Invalid title.", nameof(title));
         }
 
-        var appointment = new Appointment(_nextId++, cleanTitle, date, time);
+        var appointment = new Appointment(_nextId++, cleanTitle, date, time, reminderMinutesBefore);
         Appointments.Add((phoneNumber, appointment));
 
         return Task.FromResult(appointment);

@@ -10,6 +10,7 @@ public sealed class EfAppointmentStore(AssistantDbContext context, TimeProvider 
         string title,
         DateOnly date,
         TimeOnly time,
+        int? reminderMinutesBefore = Appointment.DefaultReminderMinutes,
         CancellationToken cancellationToken = default)
     {
         var cleanTitle = title.Trim();
@@ -26,12 +27,20 @@ public sealed class EfAppointmentStore(AssistantDbContext context, TimeProvider 
                 nameof(title));
         }
 
+        if (reminderMinutesBefore is < 1 or > Appointment.MaxReminderMinutes)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(reminderMinutesBefore),
+                $"The reminder must be between 1 and {Appointment.MaxReminderMinutes} minutes before.");
+        }
+
         var entry = new AppointmentEntry
         {
             PhoneNumber = phoneNumber,
             Title = cleanTitle,
             Date = date,
             Time = time,
+            ReminderMinutesBefore = reminderMinutesBefore,
             CreatedAtUtc = timeProvider.GetUtcNow().UtcDateTime
         };
 
@@ -80,5 +89,5 @@ public sealed class EfAppointmentStore(AssistantDbContext context, TimeProvider 
     }
 
     private static Appointment ToAppointment(AppointmentEntry entry) =>
-        new(entry.Id, entry.Title, entry.Date, entry.Time);
+        new(entry.Id, entry.Title, entry.Date, entry.Time, entry.ReminderMinutesBefore);
 }
