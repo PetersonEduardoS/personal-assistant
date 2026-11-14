@@ -182,7 +182,8 @@ public class MorningBriefSchedulerTests
             Scheduler = CreateScheduler();
         }
         public MorningBriefScheduler CreateScheduler() => new(
-            new MorningBriefWriter(Assistant, new FakeUserContextProvider(), new FakeDeadlineProvider(), Appointments), new Schedules(), Store,
+            new MorningBriefWriter(Assistant, new FakeUserContextProvider(), new FakeDeadlineProvider(), Appointments,
+                new FakeEmailInbox(), new FixedTimeProvider(Now)), new Schedules(), Store,
             Conversations, Sender, new FixedTimeProvider(Now), TimeZoneInfo.FindSystemTimeZoneById("Europe/Dublin"), new Routines(Routine),
             new MorningBriefDelivery(Store, Sender, Conversations, new MorningBriefDeliveryGate()), Appointments);
     }
