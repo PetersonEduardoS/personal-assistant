@@ -6,6 +6,7 @@ using PersonalAssistant.Core.Conversations;
 using PersonalAssistant.Core.Messaging;
 using PersonalAssistant.Core.Users;
 using PersonalAssistant.Core.MorningBriefs;
+using PersonalAssistant.Core.Notes;
 
 namespace PersonalAssistant.Core.Tests.Messaging;
 
@@ -261,5 +262,56 @@ internal sealed class FakeWorkScheduleProvider : IWorkScheduleProvider
         RequestedDates.Add(date);
 
         return Task.FromResult(Always ?? (Days.TryGetValue(date, out var schedule) ? schedule : WorkSchedule.WithShifts([])));
+    }
+}
+
+/// <summary>
+/// Keeps notes in a list, with the same rules as the real store.
+/// </summary>
+internal sealed class FakeNoteStore : INoteStore
+{
+    private long _nextId = 1;
+
+    public List<(string PhoneNumber, UserNote Note)> Notes { get; } = [];
+
+    public Task<UserNote> AddAsync(string phoneNumber, string content, CancellationToken cancellationToken = default)
+    {
+        var clean = content.Trim();
+
+        if (clean.Length == 0 || clean.Length > UserNote.MaxContentLength)
+        {
+            throw new ArgumentException("Invalid note.", nameof(content));
+        }
+
+        var note = new UserNote(_nextId++, clean, DateTimeOffset.MinValue);
+        Notes.Add((phoneNumber, note));
+
+        return Task.FromResult(note);
+    }
+
+    public Task<IReadOnlyList<UserNote>> ListAsync(string phoneNumber, CancellationToken cancellationToken = default)
+    {
+        IReadOnlyList<UserNote> result = Notes
+            .Where(entry => entry.PhoneNumber == phoneNumber)
+            .Select(entry => entry.Note)
+            .OrderBy(note => note.Id)
+            .ToList();
+
+        return Task.FromResult(result);
+    }
+
+    public Task<UserNote?> DeleteAsync(string phoneNumber, long noteId, CancellationToken cancellationToken = default)
+    {
+        var index = Notes.FindIndex(entry => entry.PhoneNumber == phoneNumber && entry.Note.Id == noteId);
+
+        if (index < 0)
+        {
+            return Task.FromResult<UserNote?>(null);
+        }
+
+        var note = Notes[index].Note;
+        Notes.RemoveAt(index);
+
+        return Task.FromResult<UserNote?>(note);
     }
 }

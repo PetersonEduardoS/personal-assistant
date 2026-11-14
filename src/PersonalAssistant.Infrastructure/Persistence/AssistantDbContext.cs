@@ -10,6 +10,8 @@ public sealed class AssistantDbContext(DbContextOptions<AssistantDbContext> opti
 
     public DbSet<AppointmentEntry> Appointments => Set<AppointmentEntry>();
 
+    public DbSet<NoteEntry> Notes => Set<NoteEntry>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<ConversationMessage>(entity =>
@@ -37,6 +39,19 @@ public sealed class AssistantDbContext(DbContextOptions<AssistantDbContext> opti
                 .IsRequired();
 
             entity.HasIndex(appointment => new { appointment.PhoneNumber, appointment.Date });
+        });
+
+        modelBuilder.Entity<NoteEntry>(entity =>
+        {
+            entity.ToTable("Notes");
+            entity.HasKey(note => note.Id);
+
+            entity.Property(note => note.PhoneNumber).HasMaxLength(32).IsRequired();
+            entity.Property(note => note.Content)
+                .HasMaxLength(PersonalAssistant.Core.Notes.UserNote.MaxContentLength)
+                .IsRequired();
+
+            entity.HasIndex(note => note.PhoneNumber);
         });
 
         modelBuilder.Entity<MorningBriefEntry>(entity =>

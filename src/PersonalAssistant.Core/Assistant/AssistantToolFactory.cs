@@ -1,5 +1,6 @@
 using PersonalAssistant.Core.Appointments;
 using PersonalAssistant.Core.Deadlines;
+using PersonalAssistant.Core.Notes;
 using PersonalAssistant.Core.Users;
 using PersonalAssistant.Core.WorkSchedules;
 
@@ -14,7 +15,8 @@ public sealed class AssistantToolFactory(
     IWorkScheduleProvider schedules,
     IDeadlineProvider deadlines,
     TimeProvider clock,
-    TimeZoneInfo timeZone)
+    TimeZoneInfo timeZone,
+    INoteStore notes)
 {
     public IReadOnlyList<IAssistantTool> CreateFor(UserProfile user) =>
     [
@@ -22,6 +24,9 @@ public sealed class AssistantToolFactory(
         new ListAppointmentsTool(appointments, user.PhoneNumber, clock, timeZone),
         new CancelAppointmentTool(appointments, user.PhoneNumber),
         new ListWorkShiftsTool(schedules, user, clock, timeZone),
-        new ListDeadlinesTool(deadlines, user, clock, timeZone)
+        new ListDeadlinesTool(deadlines, user, clock, timeZone),
+        new SaveNoteTool(notes, user.PhoneNumber),
+        new ListNotesTool(notes, user.PhoneNumber),
+        new DeleteNoteTool(notes, user.PhoneNumber)
     ];
 }

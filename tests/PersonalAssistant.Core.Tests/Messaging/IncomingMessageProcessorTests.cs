@@ -199,7 +199,11 @@ public class IncomingMessageProcessorTests
 
         var request = Assert.Single(assistant.ReceivedRequests);
         Assert.Equal(
-            new[] { "add_appointment", "list_appointments", "cancel_appointment", "list_work_shifts", "list_deadlines" },
+            new[]
+            {
+                "add_appointment", "list_appointments", "cancel_appointment", "list_work_shifts", "list_deadlines",
+                "save_note", "list_notes", "delete_note"
+            },
             request.Tools!.Select(tool => tool.Name));
     }
 
@@ -212,6 +216,6 @@ public class IncomingMessageProcessorTests
             new MorningBriefDelivery(_briefs, _sender, _store, new MorningBriefDeliveryGate()),
             dublin,
             new AssistantToolFactory(new FakeAppointmentStore(), new FakeWorkScheduleProvider(), new FakeDeadlineProvider(),
-                clock, dublin));
+                clock, dublin, new FakeNoteStore()));
     }
 }

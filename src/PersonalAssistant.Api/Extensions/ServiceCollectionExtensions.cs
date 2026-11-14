@@ -9,6 +9,7 @@ using PersonalAssistant.Core.Conversations;
 using PersonalAssistant.Core.Deadlines;
 using PersonalAssistant.Core.Messaging;
 using PersonalAssistant.Core.MorningBriefs;
+using PersonalAssistant.Core.Notes;
 using PersonalAssistant.Core.Users;
 using PersonalAssistant.Core.WhatsApp;
 using PersonalAssistant.Core.WorkSchedules;
@@ -44,6 +45,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IConversationStore, EfConversationStore>();
         services.AddScoped<IMorningBriefStore, EfMorningBriefStore>();
         services.AddScoped<IAppointmentStore, EfAppointmentStore>();
+        services.AddScoped<INoteStore, EfNoteStore>();
         services.AddTransient<AssistantToolFactory>();
         services.AddSingleton(TimeProvider.System);
 
@@ -56,7 +58,11 @@ public static class ServiceCollectionExtensions
             serviceProvider.GetRequiredService<IConfiguration>()
                 .GetSection(UserDirectory.SectionName)
                 .Get<UserProfile[]>() ?? []));
-        services.AddSingleton<IUserContextProvider, FileUserContextProvider>();
+        // The context file plus the notes saved from the chat (scoped, because the notes come from the database).
+        services.AddSingleton<FileUserContextProvider>();
+        services.AddScoped<IUserContextProvider>(serviceProvider => new NotesUserContextProvider(
+            serviceProvider.GetRequiredService<FileUserContextProvider>(),
+            serviceProvider.GetRequiredService<INoteStore>()));
         services.AddSingleton<IMorningBriefRoutineProvider, FileMorningBriefRoutineProvider>();
         services.AddSingleton<WebhookPayloadParser>();
         services.AddSingleton<IIncomingMessageQueue, InMemoryIncomingMessageQueue>();
