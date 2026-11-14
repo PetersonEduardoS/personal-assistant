@@ -125,8 +125,19 @@ The context files are personal, so they are not in the repository. Upload them t
 railway login
 railway link
 railway ssh keys add
-railway volume files upload ./contexts /contexts
+railway volume files upload ./contexts/eduardo.md /contexts/eduardo.md --overwrite
+railway volume files upload ./contexts/karina.md /contexts/karina.md --overwrite
 railway volume files list /contexts
+```
+
+Upload each file to its own path. Uploading the folder (`./contexts` to `/contexts`) creates a nested
+`/data/contexts/contexts` folder that the app does not read.
+
+To check a file, download it and read it as UTF-8 (Windows PowerShell shows accents and emojis wrongly otherwise):
+
+```
+railway volume files download /contexts/karina.md ./karina-check.md
+Get-Content ./karina-check.md -Encoding UTF8
 ```
 
 The files are read on every message, so an updated file is used right away without a redeploy.
