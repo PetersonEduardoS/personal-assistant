@@ -1,3 +1,4 @@
+using PersonalAssistant.Core.WorkSchedules;
 using PersonalAssistant.Core.Appointments;
 using PersonalAssistant.Core.Deadlines;
 using PersonalAssistant.Core.Assistant;
@@ -214,5 +215,24 @@ internal sealed class FakeAppointmentStore : IAppointmentStore
         Appointments.RemoveAt(index);
 
         return Task.FromResult<Appointment?>(appointment);
+    }
+}
+
+/// <summary>
+/// Returns the schedule set for each day, or a day without shifts.
+/// </summary>
+internal sealed class FakeWorkScheduleProvider : IWorkScheduleProvider
+{
+    public Dictionary<DateOnly, WorkSchedule> Days { get; } = [];
+
+    public WorkSchedule? Always { get; set; }
+
+    public List<DateOnly> RequestedDates { get; } = [];
+
+    public Task<WorkSchedule> GetScheduleAsync(UserProfile user, DateOnly date, CancellationToken cancellationToken = default)
+    {
+        RequestedDates.Add(date);
+
+        return Task.FromResult(Always ?? (Days.TryGetValue(date, out var schedule) ? schedule : WorkSchedule.WithShifts([])));
     }
 }

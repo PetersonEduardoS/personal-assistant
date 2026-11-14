@@ -17,12 +17,12 @@ public class AppointmentToolsTests
     private readonly FakeAppointmentStore _store = new();
 
     [Fact]
-    public void CreateFor_ReturnsTheThreeTools_WithValidSchemas()
+    public void CreateFor_ReturnsAllTheTools_WithValidSchemas()
     {
         var tools = CreateFactory().CreateFor(Eduardo);
 
         Assert.Equal(
-            new[] { "add_appointment", "list_appointments", "cancel_appointment" },
+            new[] { "add_appointment", "list_appointments", "cancel_appointment", "list_work_shifts", "list_deadlines" },
             tools.Select(tool => tool.Name));
         Assert.All(tools, tool =>
         {
@@ -160,8 +160,9 @@ public class AppointmentToolsTests
         Assert.Single(_store.Appointments);
     }
 
-    private AppointmentToolFactory CreateFactory() =>
-        new(_store, new FixedTimeProvider(Now), TimeZoneInfo.FindSystemTimeZoneById("Europe/Dublin"));
+    private AssistantToolFactory CreateFactory() =>
+        new(_store, new FakeWorkScheduleProvider(), new FakeDeadlineProvider(),
+            new FixedTimeProvider(Now), TimeZoneInfo.FindSystemTimeZoneById("Europe/Dublin"));
 
     private IAssistantTool Tool(UserProfile user, string name) =>
         CreateFactory().CreateFor(user).Single(tool => tool.Name == name);

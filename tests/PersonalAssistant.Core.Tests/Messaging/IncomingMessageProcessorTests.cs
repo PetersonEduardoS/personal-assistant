@@ -190,7 +190,7 @@ public class IncomingMessageProcessorTests
     }
 
     [Fact]
-    public async Task ProcessAsync_GivesTheAppointmentTools_ToTheAssistant()
+    public async Task ProcessAsync_GivesTheTools_ToTheAssistant()
     {
         var assistant = new FakeAssistantClient("Olá!");
         var processor = CreateProcessor(assistant);
@@ -199,7 +199,7 @@ public class IncomingMessageProcessorTests
 
         var request = Assert.Single(assistant.ReceivedRequests);
         Assert.Equal(
-            new[] { "add_appointment", "list_appointments", "cancel_appointment" },
+            new[] { "add_appointment", "list_appointments", "cancel_appointment", "list_work_shifts", "list_deadlines" },
             request.Tools!.Select(tool => tool.Name));
     }
 
@@ -211,6 +211,7 @@ public class IncomingMessageProcessorTests
         return new(assistant, _sender, Users, _store, new FakeUserContextProvider(userContext), clock,
             new MorningBriefDelivery(_briefs, _sender, _store, new MorningBriefDeliveryGate()),
             dublin,
-            new AppointmentToolFactory(new FakeAppointmentStore(), clock, dublin));
+            new AssistantToolFactory(new FakeAppointmentStore(), new FakeWorkScheduleProvider(), new FakeDeadlineProvider(),
+                clock, dublin));
     }
 }

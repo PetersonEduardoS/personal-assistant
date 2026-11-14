@@ -1,4 +1,3 @@
-using PersonalAssistant.Core.Appointments;
 using PersonalAssistant.Core.Assistant;
 using PersonalAssistant.Core.MorningBriefs;
 using PersonalAssistant.Core.Conversations;
@@ -10,7 +9,7 @@ namespace PersonalAssistant.Core.Messaging;
 /// <summary>
 /// Handles one received message: saves it, asks the assistant for a reply
 /// using the recent conversation and the user's context, sends the reply and saves it too.
-/// The assistant can use the appointment tools to save, list and cancel the user's appointments.
+/// The assistant can use tools to manage the user's appointments and to read their work shifts and deadlines.
 /// Messages from unknown numbers, repeated messages and messages that are too old are ignored.
 /// </summary>
 public sealed class IncomingMessageProcessor(
@@ -22,7 +21,7 @@ public sealed class IncomingMessageProcessor(
     TimeProvider timeProvider,
     MorningBriefDelivery briefDelivery,
     TimeZoneInfo timeZone,
-    AppointmentToolFactory appointmentTools)
+    AssistantToolFactory tools)
 {
     public const int HistoryLimit = 20;
 
@@ -69,7 +68,7 @@ public sealed class IncomingMessageProcessor(
 
         var conversation = await conversationStore.GetRecentTurnsAsync(message.From, HistoryLimit, cancellationToken);
         var userContext = await userContextProvider.GetContextAsync(user, cancellationToken);
-        var request = new AssistantRequest(user.Name, conversation, userContext, appointmentTools.CreateFor(user));
+        var request = new AssistantRequest(user.Name, conversation, userContext, tools.CreateFor(user));
 
         string reply;
 
