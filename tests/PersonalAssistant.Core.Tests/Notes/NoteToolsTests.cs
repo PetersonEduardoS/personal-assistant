@@ -120,7 +120,8 @@ public class NoteToolsTests
                 new FakeDeadlineProvider(),
                 new FixedTimeProvider(DateTimeOffset.Parse("2026-11-14T10:00:00Z")),
                 TimeZoneInfo.FindSystemTimeZoneById("Europe/Dublin"),
-                _store)
+                _store,
+                new FakeEmailInbox())
             .CreateFor(user)
             .Single(tool => tool.Name == name);
 

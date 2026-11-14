@@ -1,6 +1,7 @@
 using PersonalAssistant.Core.WorkSchedules;
 using PersonalAssistant.Core.Appointments;
 using PersonalAssistant.Core.Deadlines;
+using PersonalAssistant.Core.Emails;
 using PersonalAssistant.Core.Assistant;
 using PersonalAssistant.Core.Conversations;
 using PersonalAssistant.Core.Messaging;
@@ -313,5 +314,46 @@ internal sealed class FakeNoteStore : INoteStore
         Notes.RemoveAt(index);
 
         return Task.FromResult<UserNote?>(note);
+    }
+}
+
+/// <summary>
+/// An inbox with fixed emails. A user has email when their profile has email settings.
+/// </summary>
+internal sealed class FakeEmailInbox : IEmailInbox
+{
+    public List<EmailSummary> Emails { get; } = [];
+
+    public Dictionary<string, EmailMessage> Messages { get; } = [];
+
+    public EmailQuery? LastQuery { get; private set; }
+
+    public bool Fails { get; set; }
+
+    public bool IsConfigured(UserProfile user) => user.Email is not null;
+
+    public Task<IReadOnlyList<EmailSummary>> ListRecentAsync(
+        UserProfile user,
+        EmailQuery query,
+        CancellationToken cancellationToken = default)
+    {
+        LastQuery = query;
+
+        if (Fails)
+        {
+            throw new EmailUnavailableException("IMAP is down");
+        }
+
+        return Task.FromResult<IReadOnlyList<EmailSummary>>(Emails.Take(query.MaxCount).ToList());
+    }
+
+    public Task<EmailMessage?> ReadAsync(UserProfile user, string emailId, CancellationToken cancellationToken = default)
+    {
+        if (Fails)
+        {
+            throw new EmailUnavailableException("IMAP is down");
+        }
+
+        return Task.FromResult(Messages.GetValueOrDefault(emailId));
     }
 }

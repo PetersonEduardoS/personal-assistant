@@ -23,6 +23,9 @@ public sealed class UserProfile
     /// </summary>
     public string? DeadlinesCalendarUrl { get; set; }
 
+    /// <summary>The user's mailbox, read only. Null when the user has no email connected.</summary>
+    public UserEmailSettings? Email { get; set; }
+
     /// <summary>Daily brief time in Dublin. Null disables automatic briefs for this user.</summary>
     public TimeOnly? MorningBriefTime { get; set; }
 

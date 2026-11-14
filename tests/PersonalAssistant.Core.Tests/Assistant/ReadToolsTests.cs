@@ -127,7 +127,8 @@ public class ReadToolsTests
             _deadlines,
             new FixedTimeProvider(Now),
             TimeZoneInfo.FindSystemTimeZoneById("Europe/Dublin"),
-            new FakeNoteStore());
+            new FakeNoteStore(),
+            new FakeEmailInbox());
         var tool = factory.CreateFor(Eduardo).Single(candidate => candidate.Name == name);
 
         using var document = JsonDocument.Parse(input);

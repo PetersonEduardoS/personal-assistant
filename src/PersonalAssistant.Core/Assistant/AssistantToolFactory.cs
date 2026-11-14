@@ -1,5 +1,6 @@
 using PersonalAssistant.Core.Appointments;
 using PersonalAssistant.Core.Deadlines;
+using PersonalAssistant.Core.Emails;
 using PersonalAssistant.Core.Notes;
 using PersonalAssistant.Core.Users;
 using PersonalAssistant.Core.WorkSchedules;
@@ -16,17 +17,30 @@ public sealed class AssistantToolFactory(
     IDeadlineProvider deadlines,
     TimeProvider clock,
     TimeZoneInfo timeZone,
-    INoteStore notes)
+    INoteStore notes,
+    IEmailInbox emails)
 {
-    public IReadOnlyList<IAssistantTool> CreateFor(UserProfile user) =>
-    [
-        new AddAppointmentTool(appointments, user.PhoneNumber, clock, timeZone),
-        new ListAppointmentsTool(appointments, user.PhoneNumber, clock, timeZone),
-        new CancelAppointmentTool(appointments, user.PhoneNumber),
-        new ListWorkShiftsTool(schedules, user, clock, timeZone),
-        new ListDeadlinesTool(deadlines, user, clock, timeZone),
-        new SaveNoteTool(notes, user.PhoneNumber),
-        new ListNotesTool(notes, user.PhoneNumber),
-        new DeleteNoteTool(notes, user.PhoneNumber)
-    ];
+    public IReadOnlyList<IAssistantTool> CreateFor(UserProfile user)
+    {
+        List<IAssistantTool> tools =
+        [
+            new AddAppointmentTool(appointments, user.PhoneNumber, clock, timeZone),
+            new ListAppointmentsTool(appointments, user.PhoneNumber, clock, timeZone),
+            new CancelAppointmentTool(appointments, user.PhoneNumber),
+            new ListWorkShiftsTool(schedules, user, clock, timeZone),
+            new ListDeadlinesTool(deadlines, user, clock, timeZone),
+            new SaveNoteTool(notes, user.PhoneNumber),
+            new ListNotesTool(notes, user.PhoneNumber),
+            new DeleteNoteTool(notes, user.PhoneNumber)
+        ];
+
+        // Only users with a connected mailbox get the email tools.
+        if (emails.IsConfigured(user))
+        {
+            tools.Add(new ListEmailsTool(emails, user, clock, timeZone));
+            tools.Add(new ReadEmailTool(emails, user, timeZone));
+        }
+
+        return tools;
+    }
 }

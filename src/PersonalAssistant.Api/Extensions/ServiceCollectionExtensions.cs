@@ -7,6 +7,7 @@ using PersonalAssistant.Core.Appointments;
 using PersonalAssistant.Core.Assistant;
 using PersonalAssistant.Core.Conversations;
 using PersonalAssistant.Core.Deadlines;
+using PersonalAssistant.Core.Emails;
 using PersonalAssistant.Core.Messaging;
 using PersonalAssistant.Core.MorningBriefs;
 using PersonalAssistant.Core.Notes;
@@ -16,6 +17,7 @@ using PersonalAssistant.Core.WorkSchedules;
 using PersonalAssistant.Infrastructure.Calendars;
 using PersonalAssistant.Infrastructure.Claude;
 using PersonalAssistant.Infrastructure.Deadlines;
+using PersonalAssistant.Infrastructure.Emails;
 using PersonalAssistant.Infrastructure.Persistence;
 using PersonalAssistant.Infrastructure.Users;
 using PersonalAssistant.Infrastructure.WhatsApp;
@@ -47,6 +49,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IAppointmentStore, EfAppointmentStore>();
         services.AddScoped<INoteStore, EfNoteStore>();
         services.AddTransient<AssistantToolFactory>();
+        services.AddSingleton<IEmailInbox, DisabledEmailInbox>();
         services.AddSingleton(TimeProvider.System);
 
         // Receiving messages

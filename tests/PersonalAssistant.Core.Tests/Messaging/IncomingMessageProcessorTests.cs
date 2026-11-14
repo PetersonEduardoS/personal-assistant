@@ -216,6 +216,6 @@ public class IncomingMessageProcessorTests
             new MorningBriefDelivery(_briefs, _sender, _store, new MorningBriefDeliveryGate()),
             dublin,
             new AssistantToolFactory(new FakeAppointmentStore(), new FakeWorkScheduleProvider(), new FakeDeadlineProvider(),
-                clock, dublin, new FakeNoteStore()));
+                clock, dublin, new FakeNoteStore(), new FakeEmailInbox()));
     }
 }
