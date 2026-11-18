@@ -357,3 +357,23 @@ internal sealed class FakeEmailInbox : IEmailInbox
         return Task.FromResult(Messages.GetValueOrDefault(emailId));
     }
 }
+
+internal sealed class FakeMorningBriefPreferenceStore : IMorningBriefPreferenceStore
+{
+    public Dictionary<string, MorningBriefPreference> Preferences { get; } = [];
+
+    public Task<MorningBriefPreference?> GetAsync(string phoneNumber, CancellationToken cancellationToken = default) =>
+        Task.FromResult(Preferences.GetValueOrDefault(phoneNumber));
+
+    public Task SetAsync(string phoneNumber, MorningBriefPreference preference, CancellationToken cancellationToken = default)
+    {
+        Preferences[phoneNumber] = preference;
+        return Task.CompletedTask;
+    }
+
+    public Task ClearAsync(string phoneNumber, CancellationToken cancellationToken = default)
+    {
+        Preferences.Remove(phoneNumber);
+        return Task.CompletedTask;
+    }
+}

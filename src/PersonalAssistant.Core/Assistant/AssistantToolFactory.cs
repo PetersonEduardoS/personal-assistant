@@ -1,6 +1,7 @@
 using PersonalAssistant.Core.Appointments;
 using PersonalAssistant.Core.Deadlines;
 using PersonalAssistant.Core.Emails;
+using PersonalAssistant.Core.MorningBriefs;
 using PersonalAssistant.Core.Notes;
 using PersonalAssistant.Core.Users;
 using PersonalAssistant.Core.WorkSchedules;
@@ -18,7 +19,8 @@ public sealed class AssistantToolFactory(
     TimeProvider clock,
     TimeZoneInfo timeZone,
     INoteStore notes,
-    IEmailInbox emails)
+    IEmailInbox emails,
+    IMorningBriefPreferenceStore briefPreferences)
 {
     public IReadOnlyList<IAssistantTool> CreateFor(UserProfile user)
     {
@@ -31,7 +33,8 @@ public sealed class AssistantToolFactory(
             new ListDeadlinesTool(deadlines, user, clock, timeZone),
             new SaveNoteTool(notes, user.PhoneNumber),
             new ListNotesTool(notes, user.PhoneNumber),
-            new DeleteNoteTool(notes, user.PhoneNumber)
+            new DeleteNoteTool(notes, user.PhoneNumber),
+            new SetMorningBriefTimeTool(briefPreferences, user.PhoneNumber)
         ];
 
         // Only users with a connected mailbox get the email tools.

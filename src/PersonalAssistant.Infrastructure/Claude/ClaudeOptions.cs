@@ -46,7 +46,8 @@ public sealed class ClaudeOptions
         "2) estudo: curso, dias e horários; " +
         "3) agenda fixa da semana: academia, aulas, igreja e outros compromissos que se repetem; " +
         "4) preferências: respostas curtas ou detalhadas e assuntos que quer acompanhar; " +
-        "5) resumo diário: se quer receber um resumo do dia toda manhã e em que horário. " +
+        "5) resumo diário: se quer receber um resumo do dia toda manhã e em que horário; " +
+        "salve a resposta com set_morning_brief_time, sem criar nota. " +
         "Salve cada resposta útil com save_note assim que receber, uma nota por fato. " +
         "Se a pessoa não souber ou não quiser responder algo, pule. " +
         "Ela pode parar e continuar outro dia: ao retomar, veja o que já está nas notas e pergunte só o que falta. " +

@@ -12,6 +12,7 @@ public class ClaudeOptionsTests
         Assert.Contains("configurar", _prompt);
         Assert.Contains("uma pergunta por vez", _prompt);
         Assert.Contains("save_note", _prompt);
+        Assert.Contains("set_morning_brief_time", _prompt);
     }
 
     [Theory]

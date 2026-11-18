@@ -146,6 +146,44 @@ public class MorningBriefSchedulerTests
             await fixture.CreateScheduler().RunAsync(fixture.User));
     }
 
+    [Theory]
+    [InlineData("2026-11-06T08:14:00Z", false)]
+    [InlineData("2026-11-06T08:15:00Z", true)]
+    public async Task RunAsync_UsesTheTimeChosenInTheChat_ForAUserWithoutAnyOtherSetting(string timestamp, bool due)
+    {
+        var fixture = new Fixture(DateTimeOffset.Parse(timestamp));
+        fixture.User.MorningBriefTime = null;
+        fixture.Preferences.Preferences[fixture.User.PhoneNumber] = MorningBriefPreference.At(new TimeOnly(8, 15));
+
+        Assert.Equal(due ? MorningBriefResult.TemplateSent : MorningBriefResult.NotDue,
+            await fixture.CreateScheduler().RunAsync(fixture.User));
+    }
+
+    [Fact]
+    public async Task RunAsync_TheTimeChosenInTheChat_OverridesTheRoutine()
+    {
+        // The routine would send at 07:35 on this Thursday; the chat choice of 08:00 wins.
+        var fixture = new Fixture(DateTimeOffset.Parse("2026-11-05T07:35:00Z"));
+        fixture.User.MorningBriefTime = null;
+        fixture.Routine = new()
+        {
+            Appointments = [new() { DayOfWeek = DayOfWeek.Thursday, From = new(2026, 1, 1), Until = new(2026, 12, 31), Start = new(8, 30), TravelMinutes = 25 }]
+        };
+        fixture.Preferences.Preferences[fixture.User.PhoneNumber] = MorningBriefPreference.At(new TimeOnly(8, 0));
+
+        Assert.Equal(MorningBriefResult.NotDue, await fixture.CreateScheduler().RunAsync(fixture.User));
+    }
+
+    [Fact]
+    public async Task RunAsync_DoesNothing_WhenTheBriefWasTurnedOffInTheChat()
+    {
+        var fixture = new Fixture();
+        fixture.Preferences.Preferences[fixture.User.PhoneNumber] = MorningBriefPreference.Off;
+
+        Assert.Equal(MorningBriefResult.NotDue, await fixture.CreateScheduler().RunAsync(fixture.User));
+        Assert.Empty(fixture.Assistant.ReceivedRequests);
+    }
+
     [Fact]
     public async Task RunNowAsync_BypassesTimeButRemainsOncePerDay()
     {
@@ -174,6 +212,7 @@ public class MorningBriefSchedulerTests
         public Sender Sender { get; } = new();
         public MorningBriefRoutine? Routine { get; set; }
         public FakeAppointmentStore Appointments { get; } = new();
+        public FakeMorningBriefPreferenceStore Preferences { get; } = new();
         public MorningBriefScheduler Scheduler { get; }
         public Fixture(DateTimeOffset? now = null, FakeAssistantClient? assistant = null)
         {
@@ -185,7 +224,7 @@ public class MorningBriefSchedulerTests
             new MorningBriefWriter(Assistant, new FakeUserContextProvider(), new FakeDeadlineProvider(), Appointments,
                 new FakeEmailInbox(), new FixedTimeProvider(Now)), new Schedules(), Store,
             Conversations, Sender, new FixedTimeProvider(Now), TimeZoneInfo.FindSystemTimeZoneById("Europe/Dublin"), new Routines(Routine),
-            new MorningBriefDelivery(Store, Sender, Conversations, new MorningBriefDeliveryGate()), Appointments);
+            new MorningBriefDelivery(Store, Sender, Conversations, new MorningBriefDeliveryGate()), Appointments, Preferences);
     }
 
     private sealed class Schedules : IWorkScheduleProvider

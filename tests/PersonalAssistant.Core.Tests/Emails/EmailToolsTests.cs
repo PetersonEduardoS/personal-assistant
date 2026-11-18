@@ -158,7 +158,8 @@ public class EmailToolsTests
         new FixedTimeProvider(Now),
         TimeZoneInfo.FindSystemTimeZoneById("Europe/Dublin"),
         new FakeNoteStore(),
-        _inbox);
+        _inbox,
+        new FakeMorningBriefPreferenceStore());
 
     private async Task<string> Run(string name, string input)
     {

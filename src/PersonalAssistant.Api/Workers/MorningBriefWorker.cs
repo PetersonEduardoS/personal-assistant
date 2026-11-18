@@ -17,8 +17,8 @@ public sealed class MorningBriefWorker(
             using var timer = new PeriodicTimer(TimeSpan.FromMinutes(1), clock);
             do
             {
-                foreach (var user in users.All.Where(user => user.MorningBriefTime is not null ||
-                    !string.IsNullOrWhiteSpace(user.MorningBriefRoutineFilePath)))
+                // Every user: a time chosen in the chat is stored in the database, not in the settings.
+                foreach (var user in users.All)
                 {
                     try
                     {

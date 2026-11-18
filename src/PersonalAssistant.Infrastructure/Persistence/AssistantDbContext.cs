@@ -12,6 +12,8 @@ public sealed class AssistantDbContext(DbContextOptions<AssistantDbContext> opti
 
     public DbSet<NoteEntry> Notes => Set<NoteEntry>();
 
+    public DbSet<MorningBriefPreferenceEntry> MorningBriefPreferences => Set<MorningBriefPreferenceEntry>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<ConversationMessage>(entity =>
@@ -52,6 +54,14 @@ public sealed class AssistantDbContext(DbContextOptions<AssistantDbContext> opti
                 .IsRequired();
 
             entity.HasIndex(note => note.PhoneNumber);
+        });
+
+        modelBuilder.Entity<MorningBriefPreferenceEntry>(entity =>
+        {
+            entity.ToTable("MorningBriefPreferences");
+            entity.HasKey(preference => preference.PhoneNumber);
+
+            entity.Property(preference => preference.PhoneNumber).HasMaxLength(32);
         });
 
         modelBuilder.Entity<MorningBriefEntry>(entity =>

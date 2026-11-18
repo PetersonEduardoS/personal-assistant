@@ -48,6 +48,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IMorningBriefStore, EfMorningBriefStore>();
         services.AddScoped<IAppointmentStore, EfAppointmentStore>();
         services.AddScoped<INoteStore, EfNoteStore>();
+        services.AddScoped<IMorningBriefPreferenceStore, EfMorningBriefPreferenceStore>();
         services.AddTransient<AssistantToolFactory>();
         services.AddSingleton<IEmailInbox, ImapEmailInbox>();
         services.AddSingleton(TimeProvider.System);

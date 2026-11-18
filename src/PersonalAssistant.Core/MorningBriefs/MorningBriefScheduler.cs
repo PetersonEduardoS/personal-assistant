@@ -23,7 +23,8 @@ public sealed class MorningBriefScheduler(
     TimeZoneInfo timeZone,
     IMorningBriefRoutineProvider routines,
     MorningBriefDelivery delivery,
-    IAppointmentStore appointments)
+    IAppointmentStore appointments,
+    IMorningBriefPreferenceStore preferences)
 {
     public const string TemplateName = "morning_brief_ready";
     public const string TemplateLanguage = "pt_BR";
@@ -38,9 +39,13 @@ public sealed class MorningBriefScheduler(
     private async Task<MorningBriefResult> RunCoreAsync(UserProfile user, bool manual, CancellationToken cancellationToken)
     {
         var date = DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(clock.GetUtcNow(), timeZone).DateTime);
-        var routine = manual ? null : await routines.GetAsync(user, cancellationToken);
+        // A choice made in the chat wins: "off" stops the brief, a fixed time replaces the routine.
+        var preference = manual ? null : await preferences.GetAsync(user.PhoneNumber, cancellationToken);
+        if (preference is { Enabled: false }) return MorningBriefResult.NotDue;
+
+        var routine = manual || preference?.Time is not null ? null : await routines.GetAsync(user, cancellationToken);
         WorkSchedule? schedule = null;
-        var scheduled = user.MorningBriefTime;
+        var scheduled = preference?.Time ?? user.MorningBriefTime;
         if (routine is not null)
         {
             // No schedule lookup is needed once even the latest catch-up window has closed.

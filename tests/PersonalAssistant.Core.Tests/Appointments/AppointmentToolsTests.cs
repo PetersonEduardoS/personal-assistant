@@ -25,7 +25,7 @@ public class AppointmentToolsTests
             new[]
             {
                 "add_appointment", "list_appointments", "cancel_appointment", "list_work_shifts", "list_deadlines",
-                "save_note", "list_notes", "delete_note"
+                "save_note", "list_notes", "delete_note", "set_morning_brief_time"
             },
             tools.Select(tool => tool.Name));
         Assert.All(tools, tool =>
@@ -200,7 +200,7 @@ public class AppointmentToolsTests
     private AssistantToolFactory CreateFactory() =>
         new(_store, new FakeWorkScheduleProvider(), new FakeDeadlineProvider(),
             new FixedTimeProvider(Now), TimeZoneInfo.FindSystemTimeZoneById("Europe/Dublin"), new FakeNoteStore(),
-            new FakeEmailInbox());
+            new FakeEmailInbox(), new FakeMorningBriefPreferenceStore());
 
     private IAssistantTool Tool(UserProfile user, string name) =>
         CreateFactory().CreateFor(user).Single(tool => tool.Name == name);

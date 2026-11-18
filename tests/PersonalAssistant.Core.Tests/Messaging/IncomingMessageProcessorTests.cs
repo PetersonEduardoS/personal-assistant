@@ -202,7 +202,7 @@ public class IncomingMessageProcessorTests
             new[]
             {
                 "add_appointment", "list_appointments", "cancel_appointment", "list_work_shifts", "list_deadlines",
-                "save_note", "list_notes", "delete_note"
+                "save_note", "list_notes", "delete_note", "set_morning_brief_time"
             },
             request.Tools!.Select(tool => tool.Name));
     }
@@ -216,6 +216,6 @@ public class IncomingMessageProcessorTests
             new MorningBriefDelivery(_briefs, _sender, _store, new MorningBriefDeliveryGate()),
             dublin,
             new AssistantToolFactory(new FakeAppointmentStore(), new FakeWorkScheduleProvider(), new FakeDeadlineProvider(),
-                clock, dublin, new FakeNoteStore(), new FakeEmailInbox()));
+                clock, dublin, new FakeNoteStore(), new FakeEmailInbox(), new FakeMorningBriefPreferenceStore()));
     }
 }

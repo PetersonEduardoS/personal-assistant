@@ -124,6 +124,26 @@ namespace PersonalAssistant.Infrastructure.Persistence.Migrations
                     b.ToTable("MorningBriefs", (string)null);
                 });
 
+            modelBuilder.Entity("PersonalAssistant.Infrastructure.Persistence.MorningBriefPreferenceEntry", b =>
+                {
+                    b.Property<string>("PhoneNumber")
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<TimeOnly?>("Time")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("PhoneNumber");
+
+                    b.ToTable("MorningBriefPreferences", (string)null);
+                });
+
             modelBuilder.Entity("PersonalAssistant.Infrastructure.Persistence.NoteEntry", b =>
                 {
                     b.Property<long>("Id")
