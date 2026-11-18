@@ -222,7 +222,7 @@ public class MorningBriefSchedulerTests
         }
         public MorningBriefScheduler CreateScheduler() => new(
             new MorningBriefWriter(Assistant, new FakeUserContextProvider(), new FakeDeadlineProvider(), Appointments,
-                new FakeEmailInbox(), new FixedTimeProvider(Now)), new Schedules(), Store,
+                new FakeEmailInbox(), new FixedTimeProvider(Now), new FakeShoppingListStore()), new Schedules(), Store,
             Conversations, Sender, new FixedTimeProvider(Now), TimeZoneInfo.FindSystemTimeZoneById("Europe/Dublin"), new Routines(Routine),
             new MorningBriefDelivery(Store, Sender, Conversations, new MorningBriefDeliveryGate()), Appointments, Preferences);
     }

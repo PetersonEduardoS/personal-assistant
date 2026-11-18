@@ -64,7 +64,8 @@ public class SetMorningBriefTimeToolTests
                 TimeZoneInfo.FindSystemTimeZoneById("Europe/Dublin"),
                 new FakeNoteStore(),
                 new FakeEmailInbox(),
-                _preferences)
+                _preferences,
+                new FakeShoppingListStore())
             .CreateFor(Karina)
             .Single(candidate => candidate.Name == "set_morning_brief_time");
 

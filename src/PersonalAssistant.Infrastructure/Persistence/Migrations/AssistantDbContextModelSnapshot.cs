@@ -169,6 +169,49 @@ namespace PersonalAssistant.Infrastructure.Persistence.Migrations
 
                     b.ToTable("Notes", (string)null);
                 });
+
+            modelBuilder.Entity("PersonalAssistant.Infrastructure.Persistence.ShoppingItemEntry", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("AddedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("AddedBy")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("BoughtAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Household")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Quantity")
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Section")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Household", "BoughtAtUtc");
+
+                    b.ToTable("ShoppingItems", (string)null);
+                });
 #pragma warning restore 612, 618
         }
     }

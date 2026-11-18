@@ -4,6 +4,7 @@ using PersonalAssistant.Core.Appointments;
 using PersonalAssistant.Core.Assistant;
 using PersonalAssistant.Core.Deadlines;
 using PersonalAssistant.Core.Emails;
+using PersonalAssistant.Core.Shopping;
 using PersonalAssistant.Core.Users;
 using PersonalAssistant.Core.WorkSchedules;
 
@@ -20,7 +21,8 @@ public sealed class MorningBriefWriter(
     IDeadlineProvider deadlineProvider,
     IAppointmentStore appointmentStore,
     IEmailInbox emailInbox,
-    TimeProvider clock)
+    TimeProvider clock,
+    IShoppingListStore shoppingList)
 {
     public static readonly TimeSpan EmailWindow = TimeSpan.FromHours(24);
 
@@ -61,7 +63,10 @@ public sealed class MorningBriefWriter(
         var deadlines = await deadlineProvider.GetUpcomingAsync(user, date, cancellationToken);
         var appointments = await appointmentStore.ListAsync(user.PhoneNumber, date, date, cancellationToken);
         var emails = await GetEmailsAsync(user, cancellationToken);
-        var instruction = BuildInstruction(user.Name, date, schedule, deadlines, appointments, emails);
+        var shoppingItems = string.IsNullOrWhiteSpace(user.Household)
+            ? 0
+            : (await shoppingList.ListPendingAsync(user.Household, cancellationToken)).Count;
+        var instruction = BuildInstruction(user.Name, date, schedule, deadlines, appointments, emails, shoppingItems);
         var request = new AssistantRequest(
             user.Name,
             [new ConversationTurn(ConversationRole.User, instruction)],
@@ -101,7 +106,8 @@ public sealed class MorningBriefWriter(
         WorkSchedule schedule,
         UpcomingDeadlines deadlines,
         IReadOnlyList<Appointment> appointments,
-        (bool HasEmail, IReadOnlyList<EmailSummary>? Emails) emails)
+        (bool HasEmail, IReadOnlyList<EmailSummary>? Emails) emails,
+        int shoppingItems)
     {
         var instruction = new StringBuilder();
 
@@ -111,33 +117,44 @@ public sealed class MorningBriefWriter(
             "Comece com um bom dia curto, no tom e com o apelido que o contexto pedir.");
         instruction.AppendLine();
         instruction.AppendLine("Inclua, nesta ordem:");
-        instruction.AppendLine(
-            "1. O tempo em Dublin hoje, separado em manhã, tarde e noite. " +
-            "Pesquise a previsão e dê uma dica prática, como levar casaco ou guarda-chuva.");
-        instruction.AppendLine(
-            "2. A agenda de hoje em ordem de horário: os compromissos do contexto que caem neste dia da semana " +
+
+        var topics = new List<string>
+        {
+            "O tempo em Dublin hoje, separado em manhã, tarde e noite. " +
+            "Pesquise a previsão e dê uma dica prática, como levar casaco ou guarda-chuva.",
+            "A agenda de hoje em ordem de horário: os compromissos do contexto que caem neste dia da semana " +
             "ou nesta data, os compromissos anotados e os turnos de trabalho listados abaixo, se houver. " +
             "Avise se dois compromissos se sobrepuserem ou não deixarem tempo para o deslocamento. " +
-            "Depois, as janelas livres do dia.");
-        instruction.AppendLine(
-            "3. Se o contexto falar de academia, o melhor horário para treinar hoje: uma janela livre em que o treino caiba, " +
-            "fora do horário de pico, com a unidade mais prática.");
-        instruction.AppendLine(
-            "4. Lembretes e prazos do contexto que estejam chegando e os prazos da faculdade listados abaixo, se houver. " +
+            "Depois, as janelas livres do dia.",
+            "Se o contexto falar de academia, o melhor horário para treinar hoje: uma janela livre em que o treino caiba, " +
+            "fora do horário de pico, com a unidade mais prática.",
+            "Lembretes e prazos do contexto que estejam chegando e os prazos da faculdade listados abaixo, se houver. " +
             "Destaque os marcados como próximos e escreva os títulos em português " +
-            "(por exemplo, \"entrega do Integrated CA2\" em vez de \"is due\").");
+            "(por exemplo, \"entrega do Integrated CA2\" em vez de \"is due\")."
+        };
+
         if (emails.HasEmail)
         {
-            instruction.AppendLine(
-                "5. Os e-mails importantes da lista abaixo, se houver: mencione só os importantes segundo os critérios " +
+            topics.Add(
+                "Os e-mails importantes da lista abaixo, se houver: mencione só os importantes segundo os critérios " +
                 "de e-mail do contexto (sem critérios, só mensagens de pessoas reais e avisos que pedem ação), " +
                 "um por linha, dizendo quem mandou e o que a pessoa precisa fazer. Dê prioridade aos não lidos. " +
                 "Se nenhum for importante, não fale de e-mails.");
-            instruction.AppendLine("6. Uma frase curta de motivação ou uma dica rápida.");
         }
-        else
+
+        if (shoppingItems > 0)
         {
-            instruction.AppendLine("5. Uma frase curta de motivação ou uma dica rápida.");
+            topics.Add(
+                $"A lista de compras da casa tem {ShoppingText.Count(shoppingItems)}: diga isso em uma linha com 🛒, " +
+                "sem listar os itens. Se o contexto disser que hoje é dia de mercado, lembre disso e diga que é só " +
+                "pedir \"manda a lista\".");
+        }
+
+        topics.Add("Uma frase curta de motivação ou uma dica rápida.");
+
+        for (var i = 0; i < topics.Count; i++)
+        {
+            instruction.AppendLine($"{i + 1}. {topics[i]}");
         }
 
         if (appointments.Count > 0)

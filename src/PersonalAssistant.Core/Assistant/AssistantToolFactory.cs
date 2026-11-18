@@ -3,6 +3,7 @@ using PersonalAssistant.Core.Deadlines;
 using PersonalAssistant.Core.Emails;
 using PersonalAssistant.Core.MorningBriefs;
 using PersonalAssistant.Core.Notes;
+using PersonalAssistant.Core.Shopping;
 using PersonalAssistant.Core.Users;
 using PersonalAssistant.Core.WorkSchedules;
 
@@ -20,7 +21,8 @@ public sealed class AssistantToolFactory(
     TimeZoneInfo timeZone,
     INoteStore notes,
     IEmailInbox emails,
-    IMorningBriefPreferenceStore briefPreferences)
+    IMorningBriefPreferenceStore briefPreferences,
+    IShoppingListStore shopping)
 {
     public IReadOnlyList<IAssistantTool> CreateFor(UserProfile user)
     {
@@ -42,6 +44,15 @@ public sealed class AssistantToolFactory(
         {
             tools.Add(new ListEmailsTool(emails, user, clock, timeZone));
             tools.Add(new ReadEmailTool(emails, user, timeZone));
+        }
+
+        // Only people who share a household get the shopping list.
+        if (!string.IsNullOrWhiteSpace(user.Household))
+        {
+            tools.Add(new AddShoppingItemsTool(shopping, user));
+            tools.Add(new ListShoppingTool(shopping, user));
+            tools.Add(new MarkBoughtTool(shopping, user));
+            tools.Add(new RemoveShoppingItemTool(shopping, user));
         }
 
         return tools;

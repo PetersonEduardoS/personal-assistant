@@ -23,6 +23,12 @@ public sealed class UserProfile
     /// </summary>
     public string? DeadlinesCalendarUrl { get; set; }
 
+    /// <summary>
+    /// People with the same household share the shopping list and other household things.
+    /// Null means the user shares nothing.
+    /// </summary>
+    public string? Household { get; set; }
+
     /// <summary>The user's mailbox, read only. Null when the user has no email connected.</summary>
     public UserEmailSettings? Email { get; set; }
 

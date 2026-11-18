@@ -12,6 +12,8 @@ public sealed class AssistantDbContext(DbContextOptions<AssistantDbContext> opti
 
     public DbSet<NoteEntry> Notes => Set<NoteEntry>();
 
+    public DbSet<ShoppingItemEntry> ShoppingItems => Set<ShoppingItemEntry>();
+
     public DbSet<MorningBriefPreferenceEntry> MorningBriefPreferences => Set<MorningBriefPreferenceEntry>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -54,6 +56,23 @@ public sealed class AssistantDbContext(DbContextOptions<AssistantDbContext> opti
                 .IsRequired();
 
             entity.HasIndex(note => note.PhoneNumber);
+        });
+
+        modelBuilder.Entity<ShoppingItemEntry>(entity =>
+        {
+            entity.ToTable("ShoppingItems");
+            entity.HasKey(item => item.Id);
+
+            entity.Property(item => item.Household).HasMaxLength(64).IsRequired();
+            entity.Property(item => item.Name)
+                .HasMaxLength(PersonalAssistant.Core.Shopping.ShoppingItem.MaxNameLength)
+                .IsRequired();
+            entity.Property(item => item.Quantity)
+                .HasMaxLength(PersonalAssistant.Core.Shopping.ShoppingItem.MaxQuantityLength);
+            entity.Property(item => item.Section).HasMaxLength(32).IsRequired();
+            entity.Property(item => item.AddedBy).HasMaxLength(100).IsRequired();
+
+            entity.HasIndex(item => new { item.Household, item.BoughtAtUtc });
         });
 
         modelBuilder.Entity<MorningBriefPreferenceEntry>(entity =>

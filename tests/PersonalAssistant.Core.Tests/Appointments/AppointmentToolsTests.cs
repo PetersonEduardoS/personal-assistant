@@ -200,7 +200,7 @@ public class AppointmentToolsTests
     private AssistantToolFactory CreateFactory() =>
         new(_store, new FakeWorkScheduleProvider(), new FakeDeadlineProvider(),
             new FixedTimeProvider(Now), TimeZoneInfo.FindSystemTimeZoneById("Europe/Dublin"), new FakeNoteStore(),
-            new FakeEmailInbox(), new FakeMorningBriefPreferenceStore());
+            new FakeEmailInbox(), new FakeMorningBriefPreferenceStore(), new FakeShoppingListStore());
 
     private IAssistantTool Tool(UserProfile user, string name) =>
         CreateFactory().CreateFor(user).Single(tool => tool.Name == name);

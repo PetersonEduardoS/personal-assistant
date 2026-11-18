@@ -12,6 +12,7 @@ using PersonalAssistant.Core.Media;
 using PersonalAssistant.Core.Messaging;
 using PersonalAssistant.Core.MorningBriefs;
 using PersonalAssistant.Core.Notes;
+using PersonalAssistant.Core.Shopping;
 using PersonalAssistant.Core.Users;
 using PersonalAssistant.Core.WhatsApp;
 using PersonalAssistant.Core.WorkSchedules;
@@ -50,6 +51,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IAppointmentStore, EfAppointmentStore>();
         services.AddScoped<INoteStore, EfNoteStore>();
         services.AddScoped<IMorningBriefPreferenceStore, EfMorningBriefPreferenceStore>();
+        services.AddScoped<IShoppingListStore, EfShoppingListStore>();
         services.AddTransient<AssistantToolFactory>();
         services.AddSingleton<IEmailInbox, ImapEmailInbox>();
         services.AddSingleton(TimeProvider.System);

@@ -9,6 +9,7 @@ using PersonalAssistant.Core.Messaging;
 using PersonalAssistant.Core.Users;
 using PersonalAssistant.Core.MorningBriefs;
 using PersonalAssistant.Core.Notes;
+using PersonalAssistant.Core.Shopping;
 
 namespace PersonalAssistant.Core.Tests.Messaging;
 
@@ -394,5 +395,76 @@ internal sealed class FakeMediaDownloader : IMediaDownloader
         return Failure is null
             ? Task.FromResult(new DownloadedMedia(Content, "application/octet-stream"))
             : Task.FromException<DownloadedMedia>(Failure);
+    }
+}
+
+/// <summary>
+/// Keeps shopping items in a list, with the same rules as the real store.
+/// </summary>
+internal sealed class FakeShoppingListStore : IShoppingListStore
+{
+    private long _nextId = 1;
+
+    public List<(string Household, ShoppingItem Item, bool Bought)> Items { get; } = [];
+
+    public int ListCalls { get; private set; }
+
+    public Task<ShoppingAddResult> AddAsync(string household, string name, string? quantity, string section,
+        string addedBy, CancellationToken cancellationToken = default)
+    {
+        var existing = Items.FirstOrDefault(entry => entry.Household == household && !entry.Bought
+            && string.Equals(entry.Item.Name, name.Trim(), StringComparison.CurrentCultureIgnoreCase));
+
+        if (existing.Item is not null)
+        {
+            return Task.FromResult(new ShoppingAddResult(existing.Item, false));
+        }
+
+        var item = new ShoppingItem(_nextId++, name.Trim(), quantity, section, addedBy, DateTimeOffset.MinValue);
+        Items.Add((household, item, false));
+
+        return Task.FromResult(new ShoppingAddResult(item, true));
+    }
+
+    public Task<IReadOnlyList<ShoppingItem>> ListPendingAsync(string household, CancellationToken cancellationToken = default)
+    {
+        ListCalls++;
+        IReadOnlyList<ShoppingItem> pending = Items
+            .Where(entry => entry.Household == household && !entry.Bought)
+            .Select(entry => entry.Item)
+            .ToList();
+
+        return Task.FromResult(pending);
+    }
+
+    public Task<int> MarkBoughtAsync(string household, IReadOnlyCollection<long> itemIds, CancellationToken cancellationToken = default)
+    {
+        var marked = 0;
+
+        for (var i = 0; i < Items.Count; i++)
+        {
+            if (Items[i].Household == household && !Items[i].Bought && itemIds.Contains(Items[i].Item.Id))
+            {
+                Items[i] = Items[i] with { Bought = true };
+                marked++;
+            }
+        }
+
+        return Task.FromResult(marked);
+    }
+
+    public Task<ShoppingItem?> RemoveAsync(string household, long itemId, CancellationToken cancellationToken = default)
+    {
+        var index = Items.FindIndex(entry => entry.Household == household && !entry.Bought && entry.Item.Id == itemId);
+
+        if (index < 0)
+        {
+            return Task.FromResult<ShoppingItem?>(null);
+        }
+
+        var item = Items[index].Item;
+        Items.RemoveAt(index);
+
+        return Task.FromResult<ShoppingItem?>(item);
     }
 }

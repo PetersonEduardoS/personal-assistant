@@ -121,7 +121,7 @@ public class NoteToolsTests
                 new FixedTimeProvider(DateTimeOffset.Parse("2026-11-14T10:00:00Z")),
                 TimeZoneInfo.FindSystemTimeZoneById("Europe/Dublin"),
                 _store,
-                new FakeEmailInbox(), new FakeMorningBriefPreferenceStore())
+                new FakeEmailInbox(), new FakeMorningBriefPreferenceStore(), new FakeShoppingListStore())
             .CreateFor(user)
             .Single(tool => tool.Name == name);
 

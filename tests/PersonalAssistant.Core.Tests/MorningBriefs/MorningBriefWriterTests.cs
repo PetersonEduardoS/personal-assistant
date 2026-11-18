@@ -26,6 +26,46 @@ public class MorningBriefWriterTests
     private static readonly DateTimeOffset BriefTime = new(2026, 11, 6, 7, 30, 0, TimeSpan.Zero);
 
     [Fact]
+    public async Task WriteAsync_LeavesTheShoppingListOut_WhenTheUserHasNoHousehold()
+    {
+        var assistant = new FakeAssistantClient("Bom dia!");
+        var shopping = new FakeShoppingListStore();
+
+        await CreateWriter(assistant, shopping: shopping).WriteAsync(Eduardo, Friday, WorkSchedule.WithShifts([]));
+
+        Assert.Equal(0, shopping.ListCalls);
+        Assert.DoesNotContain("lista de compras", SingleInstruction(assistant));
+    }
+
+    [Fact]
+    public async Task WriteAsync_CountsTheSharedShoppingList_AndMentionsTheShoppingDay()
+    {
+        var assistant = new FakeAssistantClient("Bom dia!");
+        var shopping = new FakeShoppingListStore();
+        await shopping.AddAsync("casa", "Leite", null, "laticinios", "Karina");
+        await shopping.AddAsync("casa", "Pão", null, "padaria", "Eduardo");
+        var user = new UserProfile { PhoneNumber = "353800000001", Name = "Eduardo", Household = "casa" };
+
+        await CreateWriter(assistant, shopping: shopping).WriteAsync(user, Friday, WorkSchedule.WithShifts([]));
+
+        var instruction = SingleInstruction(assistant);
+        Assert.Contains("A lista de compras da casa tem 2 itens", instruction);
+        Assert.Contains("dia de mercado", instruction);
+        Assert.DoesNotContain("Leite", instruction);
+    }
+
+    [Fact]
+    public async Task WriteAsync_LeavesAnEmptyShoppingListOut()
+    {
+        var assistant = new FakeAssistantClient("Bom dia!");
+        var user = new UserProfile { PhoneNumber = "353800000001", Name = "Eduardo", Household = "casa" };
+
+        await CreateWriter(assistant, shopping: new FakeShoppingListStore()).WriteAsync(user, Friday, WorkSchedule.WithShifts([]));
+
+        Assert.DoesNotContain("lista de compras", SingleInstruction(assistant));
+    }
+
+    [Fact]
     public async Task WriteAsync_LeavesEmailsOut_WhenTheUserHasNoEmail()
     {
         var assistant = new FakeAssistantClient("Bom dia!");
@@ -313,12 +353,14 @@ public class MorningBriefWriterTests
         string? userContext = null,
         FakeDeadlineProvider? deadlines = null,
         FakeAppointmentStore? appointments = null,
-        FakeEmailInbox? emails = null) =>
+        FakeEmailInbox? emails = null,
+        FakeShoppingListStore? shopping = null) =>
         new(
             assistant,
             new FakeUserContextProvider(userContext),
             deadlines ?? new FakeDeadlineProvider(),
             appointments ?? new FakeAppointmentStore(),
             emails ?? new FakeEmailInbox(),
-            new FixedTimeProvider(BriefTime));
+            new FixedTimeProvider(BriefTime),
+            shopping ?? new FakeShoppingListStore());
 }
