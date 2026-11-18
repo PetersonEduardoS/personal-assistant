@@ -52,10 +52,12 @@ public sealed class AssistantToolFactory(
         if (!string.IsNullOrWhiteSpace(user.Household))
         {
             tools.Add(new AddShoppingItemsTool(shopping, user));
-            tools.Add(new ListShoppingTool(shopping, user));
+            tools.Add(new ListShoppingTool(shopping, receipts, user));
             tools.Add(new MarkBoughtTool(shopping, user));
             tools.Add(new RemoveShoppingItemTool(shopping, user));
             tools.Add(new SaveReceiptTool(receipts, shopping, user, clock, timeZone));
+            tools.Add(new EstimateShoppingTotalTool(shopping, receipts, user));
+            tools.Add(new SpendingSummaryTool(receipts, user, clock, timeZone));
         }
 
         return tools;
