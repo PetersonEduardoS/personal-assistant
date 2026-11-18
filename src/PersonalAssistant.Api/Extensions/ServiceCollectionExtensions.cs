@@ -8,6 +8,7 @@ using PersonalAssistant.Core.Assistant;
 using PersonalAssistant.Core.Conversations;
 using PersonalAssistant.Core.Deadlines;
 using PersonalAssistant.Core.Emails;
+using PersonalAssistant.Core.Media;
 using PersonalAssistant.Core.Messaging;
 using PersonalAssistant.Core.MorningBriefs;
 using PersonalAssistant.Core.Notes;
@@ -90,6 +91,9 @@ public static class ServiceCollectionExtensions
         services.AddTransient<IDeadlineProvider, CalendarFeedDeadlineProvider>();
         services.AddHttpClient<IAssistantClient, ClaudeClient>();
         services.AddHttpClient<IMessageSender, WhatsAppClient>();
+        services.AddHttpClient<IMediaDownloader, WhatsAppMediaClient>(client =>
+            client.Timeout = TimeSpan.FromSeconds(30))
+            .RemoveAllLoggers(); // The temporary media URL works like a password and must not be logged.
         services.AddHostedService<IncomingMessageWorker>();
         services.AddHostedService<MorningBriefWorker>();
         services.AddHostedService<AppointmentReminderWorker>();
