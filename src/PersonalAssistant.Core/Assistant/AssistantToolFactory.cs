@@ -23,7 +23,8 @@ public sealed class AssistantToolFactory(
     IEmailInbox emails,
     IMorningBriefPreferenceStore briefPreferences,
     IShoppingListStore shopping,
-    HouseholdNotifier household)
+    HouseholdNotifier household,
+    IReceiptStore receipts)
 {
     public IReadOnlyList<IAssistantTool> CreateFor(UserProfile user)
     {
@@ -54,6 +55,7 @@ public sealed class AssistantToolFactory(
             tools.Add(new ListShoppingTool(shopping, user));
             tools.Add(new MarkBoughtTool(shopping, user));
             tools.Add(new RemoveShoppingItemTool(shopping, user));
+            tools.Add(new SaveReceiptTool(receipts, shopping, user, clock, timeZone));
         }
 
         return tools;

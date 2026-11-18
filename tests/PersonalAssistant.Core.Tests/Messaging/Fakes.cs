@@ -490,3 +490,51 @@ internal sealed class FakeShoppingListStore : IShoppingListStore
         return Task.FromResult<ShoppingItem?>(item);
     }
 }
+
+internal sealed class FakeReceiptStore : IReceiptStore
+{
+    private long _nextId = 1;
+
+    public List<(string Household, Receipt Receipt)> Receipts { get; } = [];
+
+    public Task<ReceiptSaveResult> AddAsync(string household, NewReceipt receipt, CancellationToken cancellationToken = default)
+    {
+        var existing = Receipts.FirstOrDefault(entry => entry.Household == household
+            && entry.Receipt.Store == receipt.Store && entry.Receipt.Date == receipt.Date && entry.Receipt.Total == receipt.Total);
+
+        if (existing.Receipt is not null)
+        {
+            return Task.FromResult(new ReceiptSaveResult(existing.Receipt, false));
+        }
+
+        var saved = new Receipt(_nextId++, receipt.Store, receipt.Date, receipt.Total, receipt.Savings, receipt.Deposits,
+            receipt.AddedBy, receipt.Lines);
+        Receipts.Add((household, saved));
+
+        return Task.FromResult(new ReceiptSaveResult(saved, true));
+    }
+
+    public Task<IReadOnlyList<GroceryPrice>> ListLatestPricesAsync(string household, CancellationToken cancellationToken = default)
+    {
+        IReadOnlyList<GroceryPrice> prices = Receipts
+            .Where(entry => entry.Household == household)
+            .SelectMany(entry => entry.Receipt.Lines.Select(line =>
+                new GroceryPrice(line.ReceiptName, line.FriendlyName, line.UnitPrice, line.Unit, entry.Receipt.Date)))
+            .GroupBy(price => price.ReceiptName, StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.OrderByDescending(price => price.Date).First())
+            .ToList();
+
+        return Task.FromResult(prices);
+    }
+
+    public Task<IReadOnlyList<Receipt>> ListAsync(string household, DateOnly fromDate, DateOnly toDate,
+        CancellationToken cancellationToken = default)
+    {
+        IReadOnlyList<Receipt> receipts = Receipts
+            .Where(entry => entry.Household == household && entry.Receipt.Date >= fromDate && entry.Receipt.Date <= toDate)
+            .Select(entry => entry.Receipt)
+            .ToList();
+
+        return Task.FromResult(receipts);
+    }
+}

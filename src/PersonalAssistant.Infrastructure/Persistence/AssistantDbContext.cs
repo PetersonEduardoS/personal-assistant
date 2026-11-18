@@ -14,6 +14,8 @@ public sealed class AssistantDbContext(DbContextOptions<AssistantDbContext> opti
 
     public DbSet<ShoppingItemEntry> ShoppingItems => Set<ShoppingItemEntry>();
 
+    public DbSet<ReceiptEntry> Receipts => Set<ReceiptEntry>();
+
     public DbSet<MorningBriefPreferenceEntry> MorningBriefPreferences => Set<MorningBriefPreferenceEntry>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -60,6 +62,33 @@ public sealed class AssistantDbContext(DbContextOptions<AssistantDbContext> opti
                 .IsRequired();
 
             entity.HasIndex(note => note.PhoneNumber);
+        });
+
+        modelBuilder.Entity<ReceiptEntry>(entity =>
+        {
+            entity.ToTable("Receipts");
+            entity.HasKey(receipt => receipt.Id);
+
+            entity.Property(receipt => receipt.Household).HasMaxLength(64).IsRequired();
+            entity.Property(receipt => receipt.Store).HasMaxLength(100).IsRequired();
+            entity.Property(receipt => receipt.AddedBy).HasMaxLength(100).IsRequired();
+
+            entity.HasMany(receipt => receipt.Lines)
+                .WithOne()
+                .HasForeignKey(line => line.ReceiptId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(receipt => new { receipt.Household, receipt.Date });
+        });
+
+        modelBuilder.Entity<ReceiptLineEntry>(entity =>
+        {
+            entity.ToTable("ReceiptLines");
+            entity.HasKey(line => line.Id);
+
+            entity.Property(line => line.ReceiptName).HasMaxLength(100).IsRequired();
+            entity.Property(line => line.FriendlyName).HasMaxLength(100).IsRequired();
+            entity.Property(line => line.Unit).HasMaxLength(8).IsRequired();
         });
 
         modelBuilder.Entity<ShoppingItemEntry>(entity =>

@@ -65,7 +65,7 @@ public class SetMorningBriefTimeToolTests
                 new FakeNoteStore(),
                 new FakeEmailInbox(),
                 _preferences,
-                new FakeShoppingListStore(), TestHousehold.Notifier())
+                new FakeShoppingListStore(), TestHousehold.Notifier(), new FakeReceiptStore())
             .CreateFor(Karina)
             .Single(candidate => candidate.Name == "set_morning_brief_time");
 

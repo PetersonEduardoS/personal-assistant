@@ -121,7 +121,7 @@ public class SharedAppointmentsTests
             _store, new FakeWorkScheduleProvider(), new FakeDeadlineProvider(), clock,
             TimeZoneInfo.FindSystemTimeZoneById("Europe/Dublin"), new FakeNoteStore(), new FakeEmailInbox(),
             new FakeMorningBriefPreferenceStore(), new FakeShoppingListStore(),
-            TestHousehold.Notifier([Eduardo, Karina, Alone], _conversations, _sender, clock));
+            TestHousehold.Notifier([Eduardo, Karina, Alone], _conversations, _sender, clock), new FakeReceiptStore());
 
         using var document = JsonDocument.Parse(input);
 

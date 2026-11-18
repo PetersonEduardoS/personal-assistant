@@ -180,6 +180,92 @@ namespace PersonalAssistant.Infrastructure.Persistence.Migrations
                     b.ToTable("Notes", (string)null);
                 });
 
+            modelBuilder.Entity("PersonalAssistant.Infrastructure.Persistence.ReceiptEntry", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("AddedBy")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("Deposits")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Household")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("Savings")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Store")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("Total")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Household", "Date");
+
+                    b.ToTable("Receipts", (string)null);
+                });
+
+            modelBuilder.Entity("PersonalAssistant.Infrastructure.Persistence.ReceiptLineEntry", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<decimal>("Discount")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("FriendlyName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("LineTotal")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("Quantity")
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("ReceiptId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ReceiptName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Unit")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("UnitPrice")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ReceiptId");
+
+                    b.ToTable("ReceiptLines", (string)null);
+                });
+
             modelBuilder.Entity("PersonalAssistant.Infrastructure.Persistence.ShoppingItemEntry", b =>
                 {
                     b.Property<long>("Id")
@@ -221,6 +307,20 @@ namespace PersonalAssistant.Infrastructure.Persistence.Migrations
                     b.HasIndex("Household", "BoughtAtUtc");
 
                     b.ToTable("ShoppingItems", (string)null);
+                });
+
+            modelBuilder.Entity("PersonalAssistant.Infrastructure.Persistence.ReceiptLineEntry", b =>
+                {
+                    b.HasOne("PersonalAssistant.Infrastructure.Persistence.ReceiptEntry", null)
+                        .WithMany("Lines")
+                        .HasForeignKey("ReceiptId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("PersonalAssistant.Infrastructure.Persistence.ReceiptEntry", b =>
+                {
+                    b.Navigation("Lines");
                 });
 #pragma warning restore 612, 618
         }
