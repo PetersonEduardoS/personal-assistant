@@ -13,8 +13,9 @@ internal sealed class ListShoppingTool(IShoppingListStore store, IReceiptStore r
 
     public string Description =>
         "Mostra a lista de compras da casa, separada por seção do mercado, com quem pediu cada item, e os preços " +
-        "conhecidos dos recibos. Use quando a pessoa pedir a lista. Se houver preços conhecidos, chame em seguida " +
-        "estimate_shopping_total para mostrar o valor de cada item e o total aproximado no fim. Mostre agrupado por " +
+        "conhecidos dos recibos. Use quando a pessoa pedir a lista. Sempre chame em seguida estimate_shopping_total, " +
+        "para mostrar o valor de cada item e o total aproximado no fim: com o preço do recibo quando houver e com " +
+        "estimated_price (seu palpite do preço no Lidl da Irlanda) quando não houver. Mostre agrupado por " +
         "seção, com • para os itens, sem os ids (os ids servem só para as outras ferramentas da lista).";
 
     public string InputSchema => """{ "type": "object", "properties": {} }""";
@@ -33,7 +34,10 @@ internal sealed class ListShoppingTool(IShoppingListStore store, IReceiptStore r
 
         if (prices.Count == 0)
         {
-            result.Append("\n\nPor enquanto ainda não há recibos salvos, então não há preços para calcular o total.");
+            result.Append(
+                "\n\nPor enquanto ainda não há recibos salvos. Chame estimate_shopping_total com estimated_price " +
+                "para cada item (seu palpite do preço no Lidl da Irlanda) e diga que os valores são estimados " +
+                "até a pessoa mandar fotos de recibos.");
             return result.ToString();
         }
 

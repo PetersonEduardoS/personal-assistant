@@ -30,7 +30,7 @@ public class ShoppingPricesTests
     }
 
     [Fact]
-    public async Task List_HasNoPriceSection_BeforeAnyReceipt()
+    public async Task List_AsksForEstimates_BeforeAnyReceipt()
     {
         await _shopping.AddAsync("casa", "Macarrão", null, "mercearia", "Eduardo");
 
@@ -38,6 +38,17 @@ public class ShoppingPricesTests
 
         Assert.DoesNotContain("Preços conhecidos", result);
         Assert.Contains("ainda não há recibos", result);
+        Assert.Contains("estimate_shopping_total", result);
+        Assert.Contains("estimated_price", result);
+    }
+
+    [Fact]
+    public void ListDescription_AlwaysAsksForTheTotal()
+    {
+        var description = CreateFactory().CreateFor(Eduardo).Single(tool => tool.Name == "list_shopping").Description;
+
+        Assert.Contains("Sempre", description);
+        Assert.Contains("estimate_shopping_total", description);
     }
 
     [Fact]
