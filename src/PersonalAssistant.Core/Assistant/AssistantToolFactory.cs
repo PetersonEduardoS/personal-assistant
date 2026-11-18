@@ -22,15 +22,16 @@ public sealed class AssistantToolFactory(
     INoteStore notes,
     IEmailInbox emails,
     IMorningBriefPreferenceStore briefPreferences,
-    IShoppingListStore shopping)
+    IShoppingListStore shopping,
+    HouseholdNotifier household)
 {
     public IReadOnlyList<IAssistantTool> CreateFor(UserProfile user)
     {
         List<IAssistantTool> tools =
         [
-            new AddAppointmentTool(appointments, user.PhoneNumber, clock, timeZone),
-            new ListAppointmentsTool(appointments, user.PhoneNumber, clock, timeZone),
-            new CancelAppointmentTool(appointments, user.PhoneNumber),
+            new AddAppointmentTool(appointments, user, household, clock, timeZone),
+            new ListAppointmentsTool(appointments, user, clock, timeZone),
+            new CancelAppointmentTool(appointments, user, household),
             new ListWorkShiftsTool(schedules, user, clock, timeZone),
             new ListDeadlinesTool(deadlines, user, clock, timeZone),
             new SaveNoteTool(notes, user.PhoneNumber),

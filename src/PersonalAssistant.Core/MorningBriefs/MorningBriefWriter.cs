@@ -61,7 +61,7 @@ public sealed class MorningBriefWriter(
     {
         var userContext = await userContextProvider.GetContextAsync(user, cancellationToken);
         var deadlines = await deadlineProvider.GetUpcomingAsync(user, date, cancellationToken);
-        var appointments = await appointmentStore.ListAsync(user.PhoneNumber, date, date, cancellationToken);
+        var appointments = await appointmentStore.ListAsync(user.PhoneNumber, date, date, user.Household, cancellationToken);
         var emails = await GetEmailsAsync(user, cancellationToken);
         var shoppingItems = string.IsNullOrWhiteSpace(user.Household)
             ? 0
@@ -165,7 +165,8 @@ public sealed class MorningBriefWriter(
             foreach (var appointment in appointments)
             {
                 instruction.AppendLine(
-                    $"- {appointment.Time.ToString("HH:mm", CultureInfo.InvariantCulture)}: {appointment.Title}");
+                    $"- {appointment.Time.ToString("HH:mm", CultureInfo.InvariantCulture)}: {appointment.Title}" +
+                    (appointment.IsShared ? " (pros dois)" : string.Empty));
             }
         }
 

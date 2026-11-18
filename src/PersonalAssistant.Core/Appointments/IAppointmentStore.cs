@@ -1,7 +1,8 @@
 namespace PersonalAssistant.Core.Appointments;
 
 /// <summary>
-/// Keeps the appointments of each user. A user only sees and cancels their own appointments.
+/// Keeps the appointments of each user. A user sees and cancels their own appointments and the shared
+/// appointments of their household; personal appointments of other people stay private.
 /// </summary>
 public interface IAppointmentStore
 {
@@ -16,6 +17,8 @@ public interface IAppointmentStore
         DateOnly date,
         TimeOnly time,
         int? reminderMinutesBefore = Appointment.DefaultReminderMinutes,
+        string? household = null,
+        string? createdBy = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -26,12 +29,17 @@ public interface IAppointmentStore
         string phoneNumber,
         DateOnly fromDate,
         DateOnly toDate,
+        string? household = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Removes the appointment and returns it, or returns null when it does not exist or belongs to someone else.
     /// </summary>
-    Task<Appointment?> CancelAsync(string phoneNumber, long appointmentId, CancellationToken cancellationToken = default);
+    Task<Appointment?> CancelAsync(
+        string phoneNumber,
+        long appointmentId,
+        string? household = null,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Returns, for every user, the appointments from <paramref name="fromDate"/> to <paramref name="toDate"/>

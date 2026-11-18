@@ -22,4 +22,10 @@ public sealed class AppointmentEntry
     public DateTime? ReminderSentAtUtc { get; set; }
 
     public DateTime CreatedAtUtc { get; set; }
+
+    /// <summary>The couple's household for a shared appointment, or null for a personal one.</summary>
+    public string? Household { get; set; }
+
+    /// <summary>The name of who booked it.</summary>
+    public string? CreatedBy { get; set; }
 }

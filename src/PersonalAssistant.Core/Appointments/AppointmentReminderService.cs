@@ -1,6 +1,7 @@
 using System.Globalization;
 using PersonalAssistant.Core.Conversations;
 using PersonalAssistant.Core.Messaging;
+using PersonalAssistant.Core.Users;
 using PersonalAssistant.Core.WhatsApp;
 
 namespace PersonalAssistant.Core.Appointments;
@@ -14,7 +15,8 @@ public sealed class AppointmentReminderService(
     IConversationStore conversations,
     IMessageSender sender,
     TimeProvider clock,
-    TimeZoneInfo timeZone)
+    TimeZoneInfo timeZone,
+    UserDirectory users)
 {
     public const string TemplateName = "appointment_reminder";
     public const string TemplateLanguage = "pt_BR";
@@ -45,7 +47,21 @@ public sealed class AppointmentReminderService(
                 continue;
             }
 
-            await SendAsync(reminder.PhoneNumber, appointment, today, startsAt - now, now, cancellationToken);
+            // A shared appointment reminds everyone in the household; a personal one only its owner.
+            var recipients = appointment.IsShared
+                ? users.All.Where(user => user.Household == appointment.Household).Select(user => user.PhoneNumber).ToList()
+                : [];
+
+            if (recipients.Count == 0)
+            {
+                recipients.Add(reminder.PhoneNumber);
+            }
+
+            foreach (var recipient in recipients)
+            {
+                await SendAsync(recipient, appointment, today, startsAt - now, now, cancellationToken);
+            }
+
             sent++;
         }
 
@@ -68,7 +84,8 @@ public sealed class AppointmentReminderService(
         {
             var day = appointment.Date == today ? "hoje" : "amanhã";
             var minutesLeft = Math.Max(1, (int)Math.Ceiling(timeLeft.TotalMinutes));
-            text = $"⏰ Lembrete: {appointment.Title} {day} às {time} (daqui a {ReminderText.FormatDuration(minutesLeft)}).";
+            var label = appointment.IsShared ? "Lembrete pros dois" : "Lembrete";
+            text = $"⏰ {label}: {appointment.Title} {day} às {time} (daqui a {ReminderText.FormatDuration(minutesLeft)}).";
             await sender.SendTextAsync(phoneNumber, text, cancellationToken);
         }
         else

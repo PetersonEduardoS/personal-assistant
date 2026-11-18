@@ -53,7 +53,7 @@ public sealed class MorningBriefScheduler(
             var localTime = TimeZoneInfo.ConvertTime(clock.GetUtcNow(), timeZone).TimeOfDay;
             if (localTime >= latestEnd) return MorningBriefResult.NotDue;
             schedule = await schedules.GetScheduleAsync(user, date, cancellationToken);
-            var savedAppointments = await appointments.ListAsync(user.PhoneNumber, date, date, cancellationToken);
+            var savedAppointments = await appointments.ListAsync(user.PhoneNumber, date, date, user.Household, cancellationToken);
             scheduled = routine.GetTime(date, schedule, savedAppointments);
         }
         if (!manual && !IsDue(scheduled, clock.GetUtcNow())) return MorningBriefResult.NotDue;

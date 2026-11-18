@@ -159,7 +159,7 @@ public class EmailToolsTests
         TimeZoneInfo.FindSystemTimeZoneById("Europe/Dublin"),
         new FakeNoteStore(),
         _inbox,
-        new FakeMorningBriefPreferenceStore(), new FakeShoppingListStore());
+        new FakeMorningBriefPreferenceStore(), new FakeShoppingListStore(), TestHousehold.Notifier());
 
     private async Task<string> Run(string name, string input)
     {

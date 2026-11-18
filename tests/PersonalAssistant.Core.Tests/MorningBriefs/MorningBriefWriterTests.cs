@@ -26,6 +26,19 @@ public class MorningBriefWriterTests
     private static readonly DateTimeOffset BriefTime = new(2026, 11, 6, 7, 30, 0, TimeSpan.Zero);
 
     [Fact]
+    public async Task WriteAsync_IncludesTheSharedAppointments_BookedByThePartner()
+    {
+        var assistant = new FakeAssistantClient("Bom dia!");
+        var appointments = new FakeAppointmentStore();
+        await appointments.AddAsync("353800000002", "Jantar fora", Friday, new TimeOnly(20, 0), household: "casa", createdBy: "Karina");
+        var user = new UserProfile { PhoneNumber = "353800000001", Name = "Eduardo", Household = "casa" };
+
+        await CreateWriter(assistant, appointments: appointments).WriteAsync(user, Friday, WorkSchedule.WithShifts([]));
+
+        Assert.Contains("- 20:00: Jantar fora (pros dois)", SingleInstruction(assistant));
+    }
+
+    [Fact]
     public async Task WriteAsync_LeavesTheShoppingListOut_WhenTheUserHasNoHousehold()
     {
         var assistant = new FakeAssistantClient("Bom dia!");

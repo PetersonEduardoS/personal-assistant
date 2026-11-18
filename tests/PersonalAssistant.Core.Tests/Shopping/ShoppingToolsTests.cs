@@ -169,7 +169,8 @@ public class ShoppingToolsTests
         new FakeNoteStore(),
         new FakeEmailInbox(),
         new FakeMorningBriefPreferenceStore(),
-        _store);
+        _store,
+        TestHousehold.Notifier());
 
     private async Task<string> Run(UserProfile user, string name, string input)
     {

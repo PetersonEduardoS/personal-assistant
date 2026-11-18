@@ -11,6 +11,8 @@ public sealed class EfAppointmentStore(AssistantDbContext context, TimeProvider 
         DateOnly date,
         TimeOnly time,
         int? reminderMinutesBefore = Appointment.DefaultReminderMinutes,
+        string? household = null,
+        string? createdBy = null,
         CancellationToken cancellationToken = default)
     {
         var cleanTitle = title.Trim();
@@ -41,6 +43,8 @@ public sealed class EfAppointmentStore(AssistantDbContext context, TimeProvider 
             Date = date,
             Time = time,
             ReminderMinutesBefore = reminderMinutesBefore,
+            Household = string.IsNullOrWhiteSpace(household) ? null : household,
+            CreatedBy = createdBy,
             CreatedAtUtc = timeProvider.GetUtcNow().UtcDateTime
         };
 
@@ -54,11 +58,12 @@ public sealed class EfAppointmentStore(AssistantDbContext context, TimeProvider 
         string phoneNumber,
         DateOnly fromDate,
         DateOnly toDate,
+        string? household = null,
         CancellationToken cancellationToken = default)
     {
-        var entries = await context.Appointments
+        var entries = await Visible(phoneNumber, household)
             .AsNoTracking()
-            .Where(entry => entry.PhoneNumber == phoneNumber && entry.Date >= fromDate && entry.Date <= toDate)
+            .Where(entry => entry.Date >= fromDate && entry.Date <= toDate)
             .OrderBy(entry => entry.Date)
             .ThenBy(entry => entry.Time)
             .ThenBy(entry => entry.Id)
@@ -70,12 +75,11 @@ public sealed class EfAppointmentStore(AssistantDbContext context, TimeProvider 
     public async Task<Appointment?> CancelAsync(
         string phoneNumber,
         long appointmentId,
+        string? household = null,
         CancellationToken cancellationToken = default)
     {
-        var entry = await context.Appointments
-            .SingleOrDefaultAsync(
-                appointment => appointment.Id == appointmentId && appointment.PhoneNumber == phoneNumber,
-                cancellationToken);
+        var entry = await Visible(phoneNumber, household)
+            .SingleOrDefaultAsync(appointment => appointment.Id == appointmentId, cancellationToken);
 
         if (entry is null)
         {
@@ -126,6 +130,12 @@ public sealed class EfAppointmentStore(AssistantDbContext context, TimeProvider 
         return updatedRows == 1;
     }
 
+    /// <summary>The person's own appointments plus the shared appointments of their household.</summary>
+    private IQueryable<AppointmentEntry> Visible(string phoneNumber, string? household) =>
+        string.IsNullOrWhiteSpace(household)
+            ? context.Appointments.Where(entry => entry.PhoneNumber == phoneNumber)
+            : context.Appointments.Where(entry => entry.PhoneNumber == phoneNumber || entry.Household == household);
+
     private static Appointment ToAppointment(AppointmentEntry entry) =>
-        new(entry.Id, entry.Title, entry.Date, entry.Time, entry.ReminderMinutesBefore);
+        new(entry.Id, entry.Title, entry.Date, entry.Time, entry.ReminderMinutesBefore, entry.Household, entry.CreatedBy);
 }

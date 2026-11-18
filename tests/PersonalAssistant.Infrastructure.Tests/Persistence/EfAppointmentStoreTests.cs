@@ -94,6 +94,26 @@ public sealed class EfAppointmentStoreTests : IDisposable
     }
 
     [Fact]
+    public async Task SharedAppointments_AreSeenAndCancelledByTheHousehold_PersonalOnesStayPrivate()
+    {
+        await using var context = _database.CreateContext();
+        var store = CreateStore(context);
+        var dinner = await store.AddAsync(Eduardo, "Jantar fora", Friday, new TimeOnly(20, 0), household: "casa", createdBy: "Eduardo");
+        var dentist = await store.AddAsync(Eduardo, "Dentista", Friday, new TimeOnly(9, 0));
+        await store.AddAsync("353800000009", "Outra casa", Friday, new TimeOnly(10, 0), household: "outra", createdBy: "Visita");
+
+        var seenByKarina = await store.ListAsync(Karina, Friday, Friday, "casa");
+
+        var shared = Assert.Single(seenByKarina);
+        Assert.Equal("casa", shared.Household);
+        Assert.Equal("Eduardo", shared.CreatedBy);
+        Assert.Equal(2, (await store.ListAsync(Eduardo, Friday, Friday, "casa")).Count);
+        Assert.Null(await store.CancelAsync(Karina, dentist.Id, "casa"));
+        Assert.Equal(dinner.Id, (await store.CancelAsync(Karina, dinner.Id, "casa"))!.Id);
+        Assert.Equal("Dentista", Assert.Single(await store.ListAsync(Eduardo, Friday, Friday, "casa")).Title);
+    }
+
+    [Fact]
     public async Task AddAsync_TrimsTheTitle()
     {
         await using var context = _database.CreateContext();

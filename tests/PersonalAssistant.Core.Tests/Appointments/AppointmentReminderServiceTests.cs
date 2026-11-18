@@ -3,6 +3,7 @@ using PersonalAssistant.Core.Assistant;
 using PersonalAssistant.Core.Conversations;
 using PersonalAssistant.Core.Messaging;
 using PersonalAssistant.Core.Tests.Messaging;
+using PersonalAssistant.Core.Users;
 
 namespace PersonalAssistant.Core.Tests.Appointments;
 
@@ -155,12 +156,36 @@ public class AppointmentReminderServiceTests
     private Task OpenWindow() =>
         _conversations.TryAddIncomingMessageAsync(Eduardo, "wamid.1", "Oi", Now.AddHours(-1));
 
+    [Fact]
+    public async Task RunAsync_RemindsEveryoneInTheHousehold_ForASharedAppointment()
+    {
+        await OpenWindow();
+        await _store.AddAsync(Eduardo, "Jantar fora", Today, new TimeOnly(11, 0), household: "casa", createdBy: "Eduardo");
+
+        var sent = await CreateService().RunAsync();
+
+        Assert.Equal(1, sent);
+        Assert.Equal(
+            (Eduardo, "⏰ Lembrete pros dois: Jantar fora hoje às 11:00 (daqui a 1 hora)."),
+            Assert.Single(_sender.Texts));
+        var template = Assert.Single(_sender.Templates);
+        Assert.Equal(Karina, template.Recipient);
+        Assert.Equal(new[] { "Jantar fora", "14/11", "11:00" }, template.Parameters.ToArray());
+    }
+
+    private const string Karina = "353800000002";
+
     private AppointmentReminderService CreateService(DateTimeOffset? now = null) => new(
         _store,
         _conversations,
         _sender,
         new FixedTimeProvider(now ?? Now),
-        TimeZoneInfo.FindSystemTimeZoneById("Europe/Dublin"));
+        TimeZoneInfo.FindSystemTimeZoneById("Europe/Dublin"),
+        new UserDirectory(
+        [
+            new UserProfile { PhoneNumber = Eduardo, Name = "Eduardo", Household = "casa" },
+            new UserProfile { PhoneNumber = Karina, Name = "Karina", Household = "casa" }
+        ]));
 
     private sealed class RecordingSender : IMessageSender
     {

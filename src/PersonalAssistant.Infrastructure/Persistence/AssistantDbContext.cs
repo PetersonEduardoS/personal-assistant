@@ -42,7 +42,11 @@ public sealed class AssistantDbContext(DbContextOptions<AssistantDbContext> opti
                 .HasMaxLength(PersonalAssistant.Core.Appointments.Appointment.MaxTitleLength)
                 .IsRequired();
 
+            entity.Property(appointment => appointment.Household).HasMaxLength(64);
+            entity.Property(appointment => appointment.CreatedBy).HasMaxLength(100);
+
             entity.HasIndex(appointment => new { appointment.PhoneNumber, appointment.Date });
+            entity.HasIndex(appointment => new { appointment.Household, appointment.Date });
         });
 
         modelBuilder.Entity<NoteEntry>(entity =>

@@ -53,6 +53,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IMorningBriefPreferenceStore, EfMorningBriefPreferenceStore>();
         services.AddScoped<IShoppingListStore, EfShoppingListStore>();
         services.AddTransient<AssistantToolFactory>();
+        services.AddTransient<HouseholdNotifier>();
         services.AddSingleton<IEmailInbox, ImapEmailInbox>();
         services.AddSingleton(TimeProvider.System);
 

@@ -2,12 +2,13 @@ using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using PersonalAssistant.Core.Assistant;
+using PersonalAssistant.Core.Users;
 
 namespace PersonalAssistant.Core.Appointments;
 
 internal sealed class ListAppointmentsTool(
     IAppointmentStore store,
-    string phoneNumber,
+    UserProfile user,
     TimeProvider clock,
     TimeZoneInfo timeZone) : IAssistantTool
 {
@@ -50,7 +51,7 @@ internal sealed class ListAppointmentsTool(
             throw new AssistantToolException($"O período pode ter no máximo {MaxDays} dias.");
         }
 
-        var appointments = await store.ListAsync(phoneNumber, fromDate, toDate, cancellationToken);
+        var appointments = await store.ListAsync(user.PhoneNumber, fromDate, toDate, user.Household, cancellationToken);
         var period = $"{fromDate.ToString("dd/MM", CultureInfo.InvariantCulture)} e {toDate.ToString("dd/MM", CultureInfo.InvariantCulture)}";
 
         if (appointments.Count == 0)
@@ -62,7 +63,7 @@ internal sealed class ListAppointmentsTool(
 
         foreach (var appointment in appointments)
         {
-            result.Append($"\n- {AppointmentText.Describe(appointment)} (id {appointment.Id})");
+            result.Append($"\n- {AppointmentText.DescribeWithOwner(appointment)} (id {appointment.Id})");
         }
 
         return result.ToString();

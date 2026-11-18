@@ -199,6 +199,8 @@ internal sealed class FakeAppointmentStore : IAppointmentStore
         DateOnly date,
         TimeOnly time,
         int? reminderMinutesBefore = Appointment.DefaultReminderMinutes,
+        string? household = null,
+        string? createdBy = null,
         CancellationToken cancellationToken = default)
     {
         var cleanTitle = title.Trim();
@@ -208,7 +210,7 @@ internal sealed class FakeAppointmentStore : IAppointmentStore
             throw new ArgumentException("Invalid title.", nameof(title));
         }
 
-        var appointment = new Appointment(_nextId++, cleanTitle, date, time, reminderMinutesBefore);
+        var appointment = new Appointment(_nextId++, cleanTitle, date, time, reminderMinutesBefore, household, createdBy);
         Appointments.Add((phoneNumber, appointment));
         _createdAt[appointment.Id] = CreatedAt;
 
@@ -219,10 +221,11 @@ internal sealed class FakeAppointmentStore : IAppointmentStore
         string phoneNumber,
         DateOnly fromDate,
         DateOnly toDate,
+        string? household = null,
         CancellationToken cancellationToken = default)
     {
         IReadOnlyList<Appointment> result = Appointments
-            .Where(entry => entry.PhoneNumber == phoneNumber
+            .Where(entry => Visible(entry, phoneNumber, household)
                 && entry.Appointment.Date >= fromDate
                 && entry.Appointment.Date <= toDate)
             .Select(entry => entry.Appointment)
@@ -233,9 +236,13 @@ internal sealed class FakeAppointmentStore : IAppointmentStore
         return Task.FromResult(result);
     }
 
-    public Task<Appointment?> CancelAsync(string phoneNumber, long appointmentId, CancellationToken cancellationToken = default)
+    public Task<Appointment?> CancelAsync(
+        string phoneNumber,
+        long appointmentId,
+        string? household = null,
+        CancellationToken cancellationToken = default)
     {
-        var index = Appointments.FindIndex(entry => entry.PhoneNumber == phoneNumber && entry.Appointment.Id == appointmentId);
+        var index = Appointments.FindIndex(entry => entry.Appointment.Id == appointmentId && Visible(entry, phoneNumber, household));
 
         if (index < 0)
         {
@@ -247,6 +254,21 @@ internal sealed class FakeAppointmentStore : IAppointmentStore
 
         return Task.FromResult<Appointment?>(appointment);
     }
+
+    private static bool Visible((string PhoneNumber, Appointment Appointment) entry, string phoneNumber, string? household) =>
+        entry.PhoneNumber == phoneNumber || (household is not null && entry.Appointment.Household == household);
+}
+
+/// <summary>Builds the household notifier for tests, with nobody to notify unless users are given.</summary>
+internal static class TestHousehold
+{
+    public static HouseholdNotifier Notifier(
+        IEnumerable<UserProfile>? users = null,
+        FakeConversationStore? conversations = null,
+        IMessageSender? sender = null,
+        TimeProvider? clock = null) =>
+        new(new UserDirectory(users ?? []), conversations ?? new FakeConversationStore(),
+            sender ?? new FakeMessageSender(), clock ?? TimeProvider.System);
 }
 
 /// <summary>

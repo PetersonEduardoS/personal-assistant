@@ -19,6 +19,12 @@ internal static class AppointmentText
         $"{appointment.Title} dia {appointment.Date.ToString("dd/MM", CultureInfo.InvariantCulture)} " +
         $"às {appointment.Time.ToString(TimeFormat, CultureInfo.InvariantCulture)}";
 
+    /// <summary>"Jantar dia 20/11 às 20:00 (pros dois, marcado por Karina)" for a shared appointment.</summary>
+    public static string DescribeWithOwner(Appointment appointment) =>
+        appointment.IsShared
+            ? $"{Describe(appointment)} (pros dois, marcado por {appointment.CreatedBy ?? "alguém da casa"})"
+            : Describe(appointment);
+
     public static string? GetOptionalString(JsonElement input, string name) =>
         input.ValueKind == JsonValueKind.Object
         && input.TryGetProperty(name, out var value)

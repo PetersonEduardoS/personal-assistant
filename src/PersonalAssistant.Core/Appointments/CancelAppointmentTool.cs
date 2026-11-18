@@ -1,14 +1,18 @@
 using System.Text.Json;
 using PersonalAssistant.Core.Assistant;
+using PersonalAssistant.Core.Users;
 
 namespace PersonalAssistant.Core.Appointments;
 
-internal sealed class CancelAppointmentTool(IAppointmentStore store, string phoneNumber) : IAssistantTool
+internal sealed class CancelAppointmentTool(
+    IAppointmentStore store,
+    UserProfile user,
+    HouseholdNotifier household) : IAssistantTool
 {
     public string Name => "cancel_appointment";
 
     public string Description =>
-        "Cancela (apaga) um compromisso salvo da pessoa pelo id. Antes, use list_appointments para achar o id certo; " +
+        "Cancela (apaga) um compromisso salvo da pessoa, ou um compromisso dos dois, pelo id. Antes, use list_appointments para achar o id certo; " +
         "nunca chute o id. Se houver mais de um compromisso parecido, pergunte qual. " +
         "Depois, confirme no formato \"Cancelado: Título dia dd/MM às HH:mm\".";
 
@@ -25,11 +29,23 @@ internal sealed class CancelAppointmentTool(IAppointmentStore store, string phon
     public async Task<string> ExecuteAsync(JsonElement input, CancellationToken cancellationToken = default)
     {
         var appointmentId = ReadId(input);
-        var cancelled = await store.CancelAsync(phoneNumber, appointmentId, cancellationToken)
+        var cancelled = await store.CancelAsync(user.PhoneNumber, appointmentId, user.Household, cancellationToken)
             ?? throw new AssistantToolException(
                 $"Não existe compromisso com o id {appointmentId} para esta pessoa. Use list_appointments para ver os ids.");
 
-        return $"Cancelado: {AppointmentText.Describe(cancelled)}.";
+        var result = $"Cancelado: {AppointmentText.Describe(cancelled)}.";
+
+        if (!cancelled.IsShared)
+        {
+            return result;
+        }
+
+        var notice = await household.NotifyOthersAsync(
+            user,
+            $"🗑️ {user.Name} cancelou o compromisso de vocês dois: {AppointmentText.Describe(cancelled)}.",
+            cancellationToken);
+
+        return $"{result} {HouseholdNotifier.Describe(notice)}".TrimEnd();
     }
 
     private static long ReadId(JsonElement input)
