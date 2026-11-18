@@ -53,7 +53,7 @@ public sealed class IncomingMessageProcessor(
         var isNewMessage = await conversationStore.TryAddIncomingMessageAsync(
             message.From,
             message.MessageId,
-            message.Text,
+            DescribeForHistory(message),
             message.Timestamp,
             cancellationToken);
 
@@ -65,6 +65,16 @@ public sealed class IncomingMessageProcessor(
         var today = DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(timeProvider.GetUtcNow(), timeZone).DateTime);
         if (await briefDelivery.TryDeliverAsync(message.From, today, cancellationToken))
             return MessageProcessingResult.BriefDelivered;
+
+        if (message.Kind != IncomingMessageKind.Text)
+        {
+            // Photos and documents are read in a later stage; until then they get the same honest reply.
+            var unsupportedReply = UnsupportedReply(message);
+            await messageSender.SendTextAsync(message.From, unsupportedReply, cancellationToken);
+            await conversationStore.AddAssistantReplyAsync(message.From, unsupportedReply, cancellationToken);
+
+            return MessageProcessingResult.Unsupported;
+        }
 
         var conversation = await conversationStore.GetRecentTurnsAsync(message.From, HistoryLimit, cancellationToken);
         var userContext = await userContextProvider.GetContextAsync(user, cancellationToken);
@@ -88,6 +98,52 @@ public sealed class IncomingMessageProcessor(
 
         return MessageProcessingResult.Replied;
     }
+
+    /// <summary>
+    /// What goes in the conversation history: the text, or a label such as "[Foto] caption" or "[Áudio]",
+    /// so the assistant knows later what was sent.
+    /// </summary>
+    internal static string DescribeForHistory(IncomingMessage message)
+    {
+        var label = message.Kind switch
+        {
+            IncomingMessageKind.Text => null,
+            IncomingMessageKind.Image => "[Foto]",
+            IncomingMessageKind.Document => $"[Arquivo: {message.Attachment?.FileName ?? "sem nome"}]",
+            _ => $"[{Capitalize(TypeName(message.UnsupportedType))}]"
+        };
+
+        if (label is null)
+        {
+            return message.Text;
+        }
+
+        return string.IsNullOrWhiteSpace(message.Text) ? label : $"{label} {message.Text}";
+    }
+
+    internal static string UnsupportedReply(IncomingMessage message)
+    {
+        var name = message.Kind switch
+        {
+            IncomingMessageKind.Image => "foto",
+            IncomingMessageKind.Document => "arquivo",
+            _ => TypeName(message.UnsupportedType)
+        };
+
+        return $"Ainda não entendo {name}, pode mandar por texto? 😊";
+    }
+
+    private static string TypeName(string? whatsAppType) => whatsAppType switch
+    {
+        "audio" => "áudio",
+        "video" => "vídeo",
+        "sticker" => "figurinha",
+        "location" => "localização",
+        "contacts" => "contato",
+        _ => "esse tipo de mensagem"
+    };
+
+    private static string Capitalize(string text) => char.ToUpperInvariant(text[0]) + text[1..];
 
     private bool IsTooOld(IncomingMessage message) =>
         timeProvider.GetUtcNow() - message.Timestamp > MaxMessageAge;

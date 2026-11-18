@@ -6,6 +6,7 @@ namespace PersonalAssistant.Core.Messaging;
 public enum MessageProcessingResult
 {
     Replied,
+    Unsupported,
     BriefDelivered,
     UnknownSender,
     Duplicate,

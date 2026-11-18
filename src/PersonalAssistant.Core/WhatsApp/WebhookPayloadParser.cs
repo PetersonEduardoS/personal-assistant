@@ -5,13 +5,18 @@ using System.Text.Json.Serialization;
 namespace PersonalAssistant.Core.WhatsApp;
 
 /// <summary>
-/// Turns the webhook JSON sent by Meta into simple text messages.
-/// Status updates and non-text messages are ignored.
+/// Turns the webhook JSON sent by Meta into messages: text, photos, documents, and the types the assistant
+/// cannot read yet (so it can say so). Status updates and reactions are ignored.
 /// </summary>
 public sealed class WebhookPayloadParser
 {
     private const string WhatsAppBusinessAccount = "whatsapp_business_account";
     private const string TextMessageType = "text";
+    private const string ImageMessageType = "image";
+    private const string DocumentMessageType = "document";
+
+    /// <summary>Types that get a "cannot understand this yet" reply instead of silence.</summary>
+    private static readonly HashSet<string> UnsupportedTypes = ["audio", "video", "sticker", "location", "contacts"];
 
     public IReadOnlyList<IncomingMessage> Parse(string json)
     {
@@ -74,20 +79,49 @@ public sealed class WebhookPayloadParser
 
         var id = message.Id;
         var from = message.From;
-        var body = message.Text?.Body;
 
-        if (message.Type != TextMessageType
-            || string.IsNullOrEmpty(id)
+        if (string.IsNullOrEmpty(id)
             || string.IsNullOrEmpty(from)
-            || string.IsNullOrEmpty(body)
             || !long.TryParse(message.Timestamp, out var unixSeconds))
         {
             return false;
         }
 
-        incomingMessage = new IncomingMessage(id, from, body, DateTimeOffset.FromUnixTimeSeconds(unixSeconds));
+        var timestamp = DateTimeOffset.FromUnixTimeSeconds(unixSeconds);
 
-        return true;
+        switch (message.Type)
+        {
+            case TextMessageType when !string.IsNullOrEmpty(message.Text?.Body):
+                incomingMessage = new IncomingMessage(id, from, message.Text!.Body!, timestamp);
+                return true;
+
+            case ImageMessageType when TryGetAttachment(message.Image, out var image):
+                incomingMessage = new IncomingMessage(
+                    id, from, message.Image!.Caption ?? string.Empty, timestamp, IncomingMessageKind.Image, image);
+                return true;
+
+            case DocumentMessageType when TryGetAttachment(message.Document, out var document):
+                incomingMessage = new IncomingMessage(
+                    id, from, message.Document!.Caption ?? string.Empty, timestamp, IncomingMessageKind.Document, document);
+                return true;
+
+            case { } type when UnsupportedTypes.Contains(type):
+                incomingMessage = new IncomingMessage(
+                    id, from, string.Empty, timestamp, IncomingMessageKind.Unsupported, UnsupportedType: type);
+                return true;
+
+            default:
+                return false;
+        }
+    }
+
+    private static bool TryGetAttachment(WebhookMediaDto? media, [NotNullWhen(true)] out MessageAttachment? attachment)
+    {
+        attachment = string.IsNullOrEmpty(media?.Id)
+            ? null
+            : new MessageAttachment(media.Id, media.MimeType ?? string.Empty, media.FileName);
+
+        return attachment is not null;
     }
 }
 
@@ -137,6 +171,27 @@ internal sealed class WebhookMessageDto
 
     [JsonPropertyName("text")]
     public WebhookTextDto? Text { get; set; }
+
+    [JsonPropertyName("image")]
+    public WebhookMediaDto? Image { get; set; }
+
+    [JsonPropertyName("document")]
+    public WebhookMediaDto? Document { get; set; }
+}
+
+internal sealed class WebhookMediaDto
+{
+    [JsonPropertyName("id")]
+    public string? Id { get; set; }
+
+    [JsonPropertyName("mime_type")]
+    public string? MimeType { get; set; }
+
+    [JsonPropertyName("filename")]
+    public string? FileName { get; set; }
+
+    [JsonPropertyName("caption")]
+    public string? Caption { get; set; }
 }
 
 internal sealed class WebhookTextDto

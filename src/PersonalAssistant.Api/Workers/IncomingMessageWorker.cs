@@ -50,6 +50,14 @@ public sealed class IncomingMessageWorker(
                 logger.LogInformation("Replied to message {MessageId}", message.MessageId);
                 break;
 
+            case MessageProcessingResult.Unsupported:
+                logger.LogInformation(
+                    "Told the sender that message {MessageId} ({Kind} {Type}) cannot be read yet",
+                    message.MessageId,
+                    message.Kind,
+                    message.UnsupportedType);
+                break;
+
             case MessageProcessingResult.Duplicate:
                 logger.LogInformation("Ignored duplicate message {MessageId}", message.MessageId);
                 break;

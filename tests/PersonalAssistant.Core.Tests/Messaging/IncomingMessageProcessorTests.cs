@@ -180,6 +180,59 @@ public class IncomingMessageProcessorTests
         Assert.Equal(2, _sender.SentMessages.Count);
     }
 
+    [Theory]
+    [InlineData("audio", "Ainda não entendo áudio, pode mandar por texto? 😊", "[Áudio]")]
+    [InlineData("video", "Ainda não entendo vídeo, pode mandar por texto? 😊", "[Vídeo]")]
+    [InlineData("sticker", "Ainda não entendo figurinha, pode mandar por texto? 😊", "[Figurinha]")]
+    [InlineData("location", "Ainda não entendo localização, pode mandar por texto? 😊", "[Localização]")]
+    public async Task ProcessAsync_SaysWhatItCannotUnderstandYet_WithoutAskingTheAssistant(
+        string type, string expectedReply, string expectedHistory)
+    {
+        var assistant = new FakeAssistantClient("Olá!");
+        var message = Message with { Text = string.Empty, Kind = IncomingMessageKind.Unsupported, UnsupportedType = type };
+
+        var result = await CreateProcessor(assistant).ProcessAsync(message);
+
+        Assert.Equal(MessageProcessingResult.Unsupported, result);
+        Assert.Empty(assistant.ReceivedRequests);
+        Assert.Equal((Eduardo, expectedReply), Assert.Single(_sender.SentMessages));
+        Assert.Equal(
+            new[]
+            {
+                new ConversationTurn(ConversationRole.User, expectedHistory),
+                new ConversationTurn(ConversationRole.Assistant, expectedReply)
+            },
+            _store.Turns.Select(turn => turn.Turn).ToArray());
+    }
+
+    [Fact]
+    public async Task ProcessAsync_StillDeliversThePendingBrief_WhenTheReplyIsAnAudio()
+    {
+        var date = DateOnly.FromDateTime(Now.DateTime);
+        await _briefs.TryAddAsync(Eduardo, date, "Bom dia, mooooor ☀️");
+        var message = Message with { Text = string.Empty, Kind = IncomingMessageKind.Unsupported, UnsupportedType = "audio" };
+
+        var result = await CreateProcessor(new FakeAssistantClient("Olá!")).ProcessAsync(message);
+
+        Assert.Equal(MessageProcessingResult.BriefDelivered, result);
+        Assert.Equal("Bom dia, mooooor ☀️", Assert.Single(_sender.SentMessages).Text);
+    }
+
+    [Fact]
+    public async Task ProcessAsync_KeepsTheCaption_InTheHistoryOfAPhoto()
+    {
+        var message = Message with
+        {
+            Text = "Salva essa consulta",
+            Kind = IncomingMessageKind.Image,
+            Attachment = new MessageAttachment("300", "image/jpeg", null)
+        };
+
+        await CreateProcessor(new FakeAssistantClient("Olá!")).ProcessAsync(message);
+
+        Assert.Equal("[Foto] Salva essa consulta", _store.Turns.First().Turn.Content);
+    }
+
     [Fact]
     public async Task ProcessAsync_DoesNotDeliverYesterdaysBrief()
     {

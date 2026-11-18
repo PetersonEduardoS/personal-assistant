@@ -35,11 +35,50 @@ public class WebhookPayloadParserTests
     }
 
     [Fact]
-    public void Parse_IgnoresMessages_ThatAreNotText()
+    public void Parse_ReturnsAnImage_WithItsMedia()
     {
-        var messages = _parser.Parse(SamplePayloads.ImageMessage);
+        var message = Assert.Single(_parser.Parse(SamplePayloads.ImageMessage));
 
-        Assert.Empty(messages);
+        Assert.Equal(IncomingMessageKind.Image, message.Kind);
+        Assert.Equal(new MessageAttachment("300000000000000", "image/jpeg", null), message.Attachment);
+        Assert.Equal(string.Empty, message.Text);
+        Assert.Equal("wamid.TEST3", message.MessageId);
+    }
+
+    [Fact]
+    public void Parse_UsesTheCaption_AsTheText()
+    {
+        var message = Assert.Single(_parser.Parse(SamplePayloads.ImageWithCaption));
+
+        Assert.Equal("Salva essa consulta", message.Text);
+        Assert.Equal("image/png", message.Attachment!.MimeType);
+    }
+
+    [Fact]
+    public void Parse_ReturnsADocument_WithItsFileName()
+    {
+        var message = Assert.Single(_parser.Parse(SamplePayloads.DocumentMessage));
+
+        Assert.Equal(IncomingMessageKind.Document, message.Kind);
+        Assert.Equal(new MessageAttachment("400000000000000", "application/pdf", "CA2 brief.pdf"), message.Attachment);
+        Assert.Equal("Resume pf", message.Text);
+    }
+
+    [Fact]
+    public void Parse_MarksAnAudio_AsUnsupported()
+    {
+        var message = Assert.Single(_parser.Parse(SamplePayloads.AudioMessage));
+
+        Assert.Equal(IncomingMessageKind.Unsupported, message.Kind);
+        Assert.Equal("audio", message.UnsupportedType);
+        Assert.Null(message.Attachment);
+    }
+
+    [Fact]
+    public void Parse_IgnoresReactions_AndMediaWithoutId()
+    {
+        Assert.Empty(_parser.Parse(SamplePayloads.ReactionMessage));
+        Assert.Empty(_parser.Parse(SamplePayloads.ImageWithoutId));
     }
 
     [Theory]
