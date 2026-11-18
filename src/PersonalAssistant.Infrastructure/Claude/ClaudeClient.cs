@@ -42,6 +42,7 @@ public sealed class ClaudeClient(
         var systemPrompt = BuildSystemPrompt(request);
         var toolDefinitions = BuildTools(tools);
         var messages = request.Conversation.Select(ToRequestMessage).ToList();
+        AttachToLastMessage(messages, request.Attachment);
 
         for (var round = 0; ; round++)
         {
@@ -265,6 +266,26 @@ public sealed class ClaudeClient(
         }
     }
 
+    /// <summary>
+    /// Puts the photo or PDF in the latest user message, before its text, as the Messages API expects.
+    /// Only the latest message carries it: earlier files are not sent again.
+    /// </summary>
+    private static void AttachToLastMessage(List<RequestMessage> messages, AssistantAttachment? attachment)
+    {
+        if (attachment is null || messages.Count == 0 || messages[^1].Role != "user" || messages[^1].Content is not string text)
+        {
+            return;
+        }
+
+        var source = new MediaSource(attachment.MimeType, Convert.ToBase64String(attachment.Content));
+        var blockType = attachment.MimeType == "application/pdf" ? "document" : "image";
+
+        messages[^1] = messages[^1] with
+        {
+            Content = new object[] { new MediaBlock(blockType, source), new TextBlock(text) }
+        };
+    }
+
     private static RequestMessage ToRequestMessage(ConversationTurn turn) =>
         new(turn.Role == ConversationRole.Assistant ? "assistant" : "user", turn.Content);
 }
@@ -281,6 +302,24 @@ internal sealed record MessagesRequest(
 internal sealed record RequestMessage(
     [property: JsonPropertyName("role")] string Role,
     [property: JsonPropertyName("content")] object Content);
+
+internal sealed record MediaSource(
+    [property: JsonPropertyName("media_type")] string MediaType,
+    [property: JsonPropertyName("data")] string Data)
+{
+    [JsonPropertyName("type")]
+    public string Type => "base64";
+}
+
+internal sealed record MediaBlock(
+    [property: JsonPropertyName("type")] string Type,
+    [property: JsonPropertyName("source")] MediaSource Source);
+
+internal sealed record TextBlock([property: JsonPropertyName("text")] string Text)
+{
+    [JsonPropertyName("type")]
+    public string Type => "text";
+}
 
 internal sealed record CustomTool(
     [property: JsonPropertyName("name")] string Name,

@@ -2,6 +2,7 @@ using PersonalAssistant.Core.WorkSchedules;
 using PersonalAssistant.Core.Appointments;
 using PersonalAssistant.Core.Deadlines;
 using PersonalAssistant.Core.Emails;
+using PersonalAssistant.Core.Media;
 using PersonalAssistant.Core.Assistant;
 using PersonalAssistant.Core.Conversations;
 using PersonalAssistant.Core.Messaging;
@@ -375,5 +376,23 @@ internal sealed class FakeMorningBriefPreferenceStore : IMorningBriefPreferenceS
     {
         Preferences.Remove(phoneNumber);
         return Task.CompletedTask;
+    }
+}
+
+internal sealed class FakeMediaDownloader : IMediaDownloader
+{
+    public byte[] Content { get; set; } = [1, 2, 3];
+
+    public Exception? Failure { get; set; }
+
+    public List<(string MediaId, long MaxBytes)> Downloads { get; } = [];
+
+    public Task<DownloadedMedia> DownloadAsync(string mediaId, long maxBytes, CancellationToken cancellationToken = default)
+    {
+        Downloads.Add((mediaId, maxBytes));
+
+        return Failure is null
+            ? Task.FromResult(new DownloadedMedia(Content, "application/octet-stream"))
+            : Task.FromException<DownloadedMedia>(Failure);
     }
 }

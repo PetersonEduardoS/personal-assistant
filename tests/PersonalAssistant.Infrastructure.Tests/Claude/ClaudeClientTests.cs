@@ -291,6 +291,35 @@ public class ClaudeClientTests
         Assert.DoesNotContain("private reasoning", exception.Message);
     }
 
+    [Theory]
+    [InlineData("image/jpeg", "image")]
+    [InlineData("application/pdf", "document")]
+    public async Task GetReplyAsync_SendsTheAttachment_BeforeTheTextOfTheLastMessage(string mimeType, string blockType)
+    {
+        var (client, handler) = CreateClient(HttpStatusCode.OK, SuccessResponse);
+        var request = new AssistantRequest(
+            "Eduardo",
+            [
+                new ConversationTurn(ConversationRole.User, "Oi"),
+                new ConversationTurn(ConversationRole.Assistant, "Olá!"),
+                new ConversationTurn(ConversationRole.User, "[Foto] Salva essa consulta")
+            ],
+            Attachment: new AssistantAttachment([1, 2, 3], mimeType));
+
+        await client.GetReplyAsync(request);
+
+        var messages = ParseBody(handler).GetProperty("messages");
+        Assert.Equal("Oi", messages[0].GetProperty("content").GetString());
+        var content = messages[2].GetProperty("content");
+        Assert.Equal(blockType, content[0].GetProperty("type").GetString());
+        var source = content[0].GetProperty("source");
+        Assert.Equal("base64", source.GetProperty("type").GetString());
+        Assert.Equal(mimeType, source.GetProperty("media_type").GetString());
+        Assert.Equal(Convert.ToBase64String([1, 2, 3]), source.GetProperty("data").GetString());
+        Assert.Equal("text", content[1].GetProperty("type").GetString());
+        Assert.Equal("[Foto] Salva essa consulta", content[1].GetProperty("text").GetString());
+    }
+
     private static AssistantRequest Request(string text) =>
         new("Eduardo", [new ConversationTurn(ConversationRole.User, text)]);
 

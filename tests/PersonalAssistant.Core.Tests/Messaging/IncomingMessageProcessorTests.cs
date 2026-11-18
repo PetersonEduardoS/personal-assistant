@@ -1,5 +1,6 @@
 using PersonalAssistant.Core.Appointments;
 using PersonalAssistant.Core.Assistant;
+using PersonalAssistant.Core.Media;
 using PersonalAssistant.Core.MorningBriefs;
 using PersonalAssistant.Core.Messaging;
 using PersonalAssistant.Core.Users;
@@ -22,6 +23,93 @@ public class IncomingMessageProcessorTests
     private readonly FakeConversationStore _store = new();
     private readonly FakeMessageSender _sender = new();
     private readonly FakeMorningBriefStore _briefs = new();
+    private readonly FakeMediaDownloader _media = new();
+
+    private static IncomingMessage Photo(string mimeType = "image/jpeg") => Message with
+    {
+        Text = "Salva essa consulta",
+        Kind = IncomingMessageKind.Image,
+        Attachment = new MessageAttachment("300", mimeType, null)
+    };
+
+    private static IncomingMessage Document(string mimeType, string fileName = "CA2 brief.pdf") => Message with
+    {
+        Text = "Resume pf",
+        Kind = IncomingMessageKind.Document,
+        Attachment = new MessageAttachment("400", mimeType, fileName)
+    };
+
+    [Fact]
+    public async Task ProcessAsync_SendsThePhoto_ToTheAssistant_WithTheCaption()
+    {
+        var assistant = new FakeAssistantClient("Salvei a consulta!");
+
+        var result = await CreateProcessor(assistant).ProcessAsync(Photo());
+
+        Assert.Equal(MessageProcessingResult.Replied, result);
+        Assert.Equal(("300", MediaLimits.MaxImageBytes), Assert.Single(_media.Downloads));
+        var request = Assert.Single(assistant.ReceivedRequests);
+        Assert.Equal(new byte[] { 1, 2, 3 }, request.Attachment!.Content);
+        Assert.Equal("image/jpeg", request.Attachment.MimeType);
+        Assert.Equal("[Foto] Salva essa consulta", request.Conversation.Last().Content);
+        Assert.Equal((Eduardo, "Salvei a consulta!"), Assert.Single(_sender.SentMessages));
+    }
+
+    [Fact]
+    public async Task ProcessAsync_SendsAPdf_ToTheAssistant()
+    {
+        var assistant = new FakeAssistantClient("Resumo: ...");
+
+        await CreateProcessor(assistant).ProcessAsync(Document("application/pdf"));
+
+        Assert.Equal(("400", MediaLimits.MaxDocumentBytes), Assert.Single(_media.Downloads));
+        var request = Assert.Single(assistant.ReceivedRequests);
+        Assert.Equal("application/pdf", request.Attachment!.MimeType);
+        Assert.Equal("[Arquivo: CA2 brief.pdf] Resume pf", request.Conversation.Last().Content);
+    }
+
+    [Theory]
+    [InlineData(IncomingMessageKind.Document, "application/vnd.openxmlformats-officedocument.wordprocessingml.document")]
+    [InlineData(IncomingMessageKind.Image, "image/heic")]
+    public async Task ProcessAsync_SaysWhichFilesItReads_ForOtherFileTypes(IncomingMessageKind kind, string mimeType)
+    {
+        var assistant = new FakeAssistantClient("Olá!");
+        var message = kind == IncomingMessageKind.Image ? Photo(mimeType) : Document(mimeType, "notas.docx");
+
+        var result = await CreateProcessor(assistant).ProcessAsync(message);
+
+        Assert.Equal(MessageProcessingResult.Unsupported, result);
+        Assert.Empty(_media.Downloads);
+        Assert.Empty(assistant.ReceivedRequests);
+        Assert.Equal(IncomingMessageProcessor.UnsupportedFileReply, Assert.Single(_sender.SentMessages).Text);
+    }
+
+    [Theory]
+    [InlineData(true, "5 MB")]
+    [InlineData(false, "10 MB")]
+    public async Task ProcessAsync_SaysTheLimit_WhenTheFileIsTooLarge(bool isPhoto, string limit)
+    {
+        _media.Failure = new MediaTooLargeException(1);
+        var assistant = new FakeAssistantClient("Olá!");
+
+        var result = await CreateProcessor(assistant).ProcessAsync(isPhoto ? Photo() : Document("application/pdf"));
+
+        Assert.Equal(MessageProcessingResult.Unsupported, result);
+        Assert.Empty(assistant.ReceivedRequests);
+        Assert.Contains(limit, Assert.Single(_sender.SentMessages).Text);
+    }
+
+    [Fact]
+    public async Task ProcessAsync_AsksToSendAgain_WhenTheDownloadFails()
+    {
+        _media.Failure = new MediaUnavailableException("expired");
+        var assistant = new FakeAssistantClient("Olá!");
+
+        await CreateProcessor(assistant).ProcessAsync(Photo());
+
+        Assert.Empty(assistant.ReceivedRequests);
+        Assert.Equal(IncomingMessageProcessor.DownloadFailedReply, Assert.Single(_sender.SentMessages).Text);
+    }
 
     [Fact]
     public async Task ProcessAsync_SendsAssistantReply_ToSender()
@@ -269,6 +357,7 @@ public class IncomingMessageProcessorTests
             new MorningBriefDelivery(_briefs, _sender, _store, new MorningBriefDeliveryGate()),
             dublin,
             new AssistantToolFactory(new FakeAppointmentStore(), new FakeWorkScheduleProvider(), new FakeDeadlineProvider(),
-                clock, dublin, new FakeNoteStore(), new FakeEmailInbox(), new FakeMorningBriefPreferenceStore()));
+                clock, dublin, new FakeNoteStore(), new FakeEmailInbox(), new FakeMorningBriefPreferenceStore()),
+            _media);
     }
 }
